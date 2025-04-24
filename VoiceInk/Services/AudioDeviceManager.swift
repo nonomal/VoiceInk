@@ -461,4 +461,27 @@ class AudioDeviceManager: ObservableObject {
             NotificationCenter.default.post(name: NSNotification.Name("AudioDeviceChanged"), object: nil)
         }
     }
+    
+    func isCurrentDeviceValidAndAvailable() -> Bool {
+        let currentID = getCurrentDevice()
+        
+        // Check for invalid ID (e.g., 0)
+        guard currentID != 0 else {
+            logger.error("Current device ID is invalid (0).")
+            return false
+        }
+        
+        // Check if the device is in the list of available devices
+        let isAvailable = availableDevices.contains { $0.id == currentID }
+        
+        if !isAvailable {
+            if let deviceName = getDeviceName(deviceID: currentID) {
+                 logger.warning("Selected device '\(deviceName)' (ID: \(currentID)) is no longer available.")
+            } else {
+                 logger.warning("Selected device ID \(currentID) is no longer available.")
+            }
+        }
+        
+        return isAvailable
+    }
 } 

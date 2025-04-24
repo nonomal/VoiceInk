@@ -128,6 +128,19 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
                 logger.error("❌ No recorded file found after stopping recording")
             }
         } else {
+            // Add check for valid audio device before starting
+            guard AudioDeviceManager.shared.isCurrentDeviceValidAndAvailable() else {
+                await MainActor.run {
+                    let alert = NSAlert()
+                    alert.messageText = "Audio Input Error"
+                    alert.informativeText = "The selected audio input device is not available or configured correctly. Please check audio input settings in VoiceInk app."
+                    alert.alertStyle = .critical
+                    alert.addButton(withTitle: "OK")
+                    alert.runModal()
+                }
+                return
+            }
+            
             guard currentModel != nil else {
                 await MainActor.run {
                     let alert = NSAlert()

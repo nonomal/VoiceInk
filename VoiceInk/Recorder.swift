@@ -74,7 +74,7 @@ class Recorder: ObservableObject {
         deviceManager.isRecordingActive = true
         logger.notice("▶️ Attempting to start recording to: \(url.lastPathComponent)")
 
-        let wasMuted = await mediaController.muteSystemAudio()
+        _ = await mediaController.muteSystemAudio()
         let deviceID = deviceManager.getCurrentDevice()
         if deviceID != 0 {
             do {
