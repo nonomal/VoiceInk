@@ -253,7 +253,7 @@ class HotkeyManager: ObservableObject {
         KeyboardShortcuts.onKeyDown(for: .escapeRecorder) { [weak self] in
             Task { @MainActor in
                 guard let self = self,
-                      await self.whisperState.isMiniRecorderVisible else { return }
+                      self.whisperState.isMiniRecorderVisible else { return }
                 
                 SoundManager.shared.playEscSound()
                 await self.whisperState.dismissMiniRecorder()
@@ -269,8 +269,8 @@ class HotkeyManager: ObservableObject {
         KeyboardShortcuts.onKeyDown(for: .toggleEnhancement) { [weak self] in
             Task { @MainActor in
                 guard let self = self,
-                      await self.whisperState.isMiniRecorderVisible,
-                      let enhancementService = await self.whisperState.getEnhancementService() else { return }
+                      self.whisperState.isMiniRecorderVisible,
+                      let enhancementService = self.whisperState.getEnhancementService() else { return }
                 enhancementService.isEnhancementEnabled.toggle()
             }
         }
@@ -304,8 +304,8 @@ class HotkeyManager: ObservableObject {
         KeyboardShortcuts.onKeyDown(for: shortcutName) { [weak self] in
             Task { @MainActor in
                 guard let self = self,
-                      await self.whisperState.isMiniRecorderVisible,
-                      let enhancementService = await self.whisperState.getEnhancementService() else { return }
+                      self.whisperState.isMiniRecorderVisible,
+                      let enhancementService = self.whisperState.getEnhancementService() else { return }
                 
                 let prompts = enhancementService.allPrompts
                 if index < prompts.count {
@@ -367,11 +367,13 @@ class HotkeyManager: ObservableObject {
         lastShortcutTriggerTime = Date()
         
         // Handle the shortcut
-        await whisperState.handleToggleMiniRecorder()
+        whisperState.handleToggleMiniRecorder()
     }
     
     deinit {
         visibilityTask?.cancel()
+        
+        // Ensure cleanup happens on the main actor without capturing self
         Task { @MainActor in
             removeKeyMonitor()
             removeEscapeShortcut()
