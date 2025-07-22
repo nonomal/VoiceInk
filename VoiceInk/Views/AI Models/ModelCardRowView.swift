@@ -2,6 +2,7 @@ import SwiftUI
 import AppKit
 
 struct ModelCardRowView: View {
+    @EnvironmentObject var licenseViewModel: LicenseViewModel
     let model: any TranscriptionModel
     let isDownloaded: Bool
     let isCurrent: Bool
@@ -40,17 +41,19 @@ struct ModelCardRowView: View {
                     )
                 }
             case .whisperKit:
-                if let whisperKitModel = model as? WhisperKitModel {
-                    WhisperKitModelCardView(
-                        model: whisperKitModel,
-                        isDownloaded: isDownloaded,
-                        isCurrent: isCurrent,
-                        downloadProgress: downloadProgress,
-                        deleteAction: deleteAction,
-                        setDefaultAction: setDefaultAction,
-                        downloadAction: downloadAction,
-                        showInFinderAction: showInFinderAction ?? {}
-                    )
+                if licenseViewModel.licenseState == .licensed {
+                    if let whisperKitModel = model as? WhisperKitModel {
+                        WhisperKitModelCardView(
+                            model: whisperKitModel,
+                            isDownloaded: isDownloaded,
+                            isCurrent: isCurrent,
+                            downloadProgress: downloadProgress,
+                            deleteAction: deleteAction,
+                            setDefaultAction: setDefaultAction,
+                            downloadAction: downloadAction,
+                            showInFinderAction: showInFinderAction ?? {}
+                        )
+                    }
                 }
             case .groq, .elevenLabs, .deepgram, .mistral:
                 if let cloudModel = model as? CloudModel {

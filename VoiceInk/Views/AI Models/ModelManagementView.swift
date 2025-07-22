@@ -13,6 +13,7 @@ struct ModelManagementView: View {
     @ObservedObject var whisperState: WhisperState
     @State private var customModelToEdit: CustomCloudModel?
     @StateObject private var aiService = AIService()
+    @StateObject private var licenseViewModel = LicenseViewModel()
     @StateObject private var customModelManager = CustomModelManager.shared
     @EnvironmentObject private var enhancementService: AIEnhancementService
     @Environment(\.modelContext) private var modelContext
@@ -179,6 +180,7 @@ struct ModelManagementView: View {
                                 }
                             } : nil
                         )
+                        .environmentObject(licenseViewModel)
                     }
                     
                     if selectedFilter == .custom {
@@ -202,10 +204,10 @@ struct ModelManagementView: View {
         switch selectedFilter {
         case .recommended:
             return whisperState.allAvailableModels.filter {
-                let recommendedNames = ["ggml-base.en", "ggml-large-v3-turbo-q5_0", "ggml-large-v3-turbo", "whisper-large-v3-turbo"]
+                let recommendedNames = ["ggml-base.en", "ggml-large-v3-turbo-q5_0", "ggml-large-v3-turbo", "whisper-large-v3-turbo", "nvidia_parakeet-v2"]
                 return recommendedNames.contains($0.name)
             }.sorted { model1, model2 in
-                let recommendedOrder = ["ggml-base.en", "ggml-large-v3-turbo-q5_0", "ggml-large-v3-turbo", "whisper-large-v3-turbo"]
+                let recommendedOrder = ["ggml-base.en", "ggml-large-v3-turbo-q5_0", "ggml-large-v3-turbo", "whisper-large-v3-turbo", "nvidia_parakeet-v2"]
                 let index1 = recommendedOrder.firstIndex(of: model1.name) ?? Int.max
                 let index2 = recommendedOrder.firstIndex(of: model2.name) ?? Int.max
                 return index1 < index2

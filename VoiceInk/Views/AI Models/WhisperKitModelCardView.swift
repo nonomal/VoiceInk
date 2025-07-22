@@ -17,19 +17,30 @@ struct WhisperKitModelCardView: View {
     }
     
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            VStack(alignment: .leading, spacing: 6) {
-                headerSection
-                metadataSection
-                descriptionSection
-                progressSection
+        ZStack(alignment: .topTrailing) {
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    headerSection
+                    metadataSection
+                    descriptionSection
+                    progressSection
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                
+                actionSection
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+            .background(CardBackground(isSelected: isCurrent, useAccentGradientWhenSelected: isCurrent))
             
-            actionSection
+            Text("Experimental")
+                .font(.caption2)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2)
+                .background(Color.orange.opacity(0.2))
+                .foregroundColor(.orange)
+                .cornerRadius(6)
+                .offset(x: 10, y: -10) // Adjust position as needed
         }
-        .padding(16)
-        .background(CardBackground(isSelected: isCurrent, useAccentGradientWhenSelected: isCurrent))
     }
     
     private var headerSection: some View {
