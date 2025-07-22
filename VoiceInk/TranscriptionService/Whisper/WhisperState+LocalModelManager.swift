@@ -206,6 +206,9 @@ extension WhisperState {
                 try await downloadAndSetupCoreMLModel(for: whisperModel, from: coreMLURL)
             }
             
+            // Warm-up initialization before marking as complete
+            let _ = try await WhisperContext.createContext(path: whisperModel.url.path)
+            
             availableModels.append(whisperModel)
             self.downloadProgress.removeValue(forKey: model.name + "_main")
         } catch {

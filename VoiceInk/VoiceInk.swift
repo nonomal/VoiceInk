@@ -34,6 +34,18 @@ struct VoiceInkApp: App {
                 Task {
                     await ArgmaxSDK.with(ArgmaxConfig(apiKey: apiKey))
                     print("✅ Argmax SDK initialized successfully")
+                    
+                    // Track the device license
+                    let licenseInfo = await ArgmaxSDK.licenseInfo()
+                    let licenseId = licenseInfo.licenseId
+                    
+                    KeyFetcher.shared.trackDeviceLicense(licenseId) { success in
+                        if success {
+                            print("📊 Device license tracked successfully")
+                        } else {
+                            print("⚠️ Failed to track device license")
+                        }
+                    }
                 }
             }
         }
