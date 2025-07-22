@@ -4,36 +4,6 @@ import Combine
 import OSLog
 
 extension WhisperState {
-    // MARK: - WhisperKit Model Loading
-    
-    func loadWhisperKitModel(_ model: WhisperKitModel) async throws {
-        guard whisperKitPro == nil else { return }
-        
-        guard let modelPath = downloadedWhisperKitModelPaths[model.name] else {
-            throw NSError(
-                domain: "WhisperKitTranscriptionService",
-                code: 3,
-                userInfo: [NSLocalizedDescriptionKey: "Model '\(model.name)' not found locally. Please download it first."]
-            )
-        }
-        
-        logger.info("🔄 Loading WhisperKit model: \(model.name)")
-        
-        do {
-            // Initialize VAD model for WhisperKit
-            let vad = try await VoiceActivityDetector.modelVAD()
-            let config = WhisperKitProConfig(modelFolder: modelPath, voiceActivityDetector: vad)
-            
-            whisperKitPro = try await WhisperKitPro(config)
-            loadedWhisperKitModel = model
-            
-            logger.info("✅ WhisperKit model loaded successfully: \(model.name)")
-        } catch {
-            logger.error("❌ Failed to load WhisperKit model: \(error.localizedDescription)")
-            throw error
-        }
-    }
-    
     // MARK: - WhisperKit Model Download
     
     func downloadWhisperKitModel(model: WhisperKitModel) async {
@@ -86,11 +56,7 @@ extension WhisperState {
                 self.downloadedWhisperKitModelPaths[model.name] = modelURL.path
             }
             
-            // Initialize with downloaded model
-            let config = WhisperKitProConfig(
-                modelFolder: modelURL.path(percentEncoded: false)
-            )
-            whisperKitPro = try await WhisperKitPro(config)
+            logger.info("✅ WhisperKit model downloaded successfully: \(model.name)")
             
         } catch {
             logger.error("Failed to download WhisperKit model: \(error.localizedDescription)")

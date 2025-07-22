@@ -51,9 +51,6 @@ class WhisperState: NSObject, ObservableObject {
     }
     
     var whisperContext: WhisperContext?
-    // WhisperKit model instance for reuse
-    var whisperKitPro: WhisperKitPro?
-    var loadedWhisperKitModel: WhisperKitModel?
     let recorder = Recorder()
     var recordedFile: URL? = nil
     let whisperPrompt = WhisperPrompt()
@@ -200,17 +197,7 @@ class WhisperState: NSObject, ObservableObject {
                                 }
                             }
                             
-                            // Load WhisperKit model if it's a WhisperKit model and not already loaded
-                            if let model = self.currentTranscriptionModel, model.provider == .whisperKit {
-                                if let whisperKitModel = model as? WhisperKitModel,
-                                   self.whisperKitPro == nil {
-                                    do {
-                                        try await self.loadWhisperKitModel(whisperKitModel)
-                                    } catch {
-                                        self.logger.error("❌ WhisperKit model loading failed: \(error.localizedDescription)")
-                                    }
-                                }
-                            }
+
         
                             if let enhancementService = self.enhancementService,
                                enhancementService.useScreenCaptureContext {

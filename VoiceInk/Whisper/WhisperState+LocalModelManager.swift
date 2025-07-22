@@ -337,15 +337,6 @@ extension WhisperState {
         await whisperContext?.releaseResources()
         whisperContext = nil
         isModelLoaded = false
-        
-        // Cleanup WhisperKit models
-        if let whisperKitPro = whisperKitPro {
-            logger.info("🔄 Unloading WhisperKit model: \(self.loadedWhisperKitModel?.name ?? "unknown")")
-            await whisperKitPro.unloadModels()
-            self.whisperKitPro = nil
-            self.loadedWhisperKitModel = nil
-            logger.info("✅ WhisperKit model unloaded successfully")
-        }
     }
     
     // MARK: - Helper Methods
@@ -360,16 +351,6 @@ extension WhisperState {
         guard let modelPath = downloadedWhisperKitModelPaths[model.name] else {
             logger.error("Could not find path for model to delete: \(model.name)")
             return
-        }
-        
-        // Cleanup loaded instance if this model is currently loaded
-        if let loadedModel = loadedWhisperKitModel, loadedModel.name == model.name {
-            logger.info("🔄 Cleaning up loaded WhisperKit instance before deletion: \(model.name)")
-            if let whisperKitPro = whisperKitPro {
-                await whisperKitPro.unloadModels()
-            }
-            self.whisperKitPro = nil
-            self.loadedWhisperKitModel = nil
         }
         
         do {
