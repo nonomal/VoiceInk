@@ -11,7 +11,7 @@ class KeyFetcher {
     private let polarApiTokenURL: URL
     private let polarBaseURL: URL
     
-    private let apiAuthSecret = "voiceink-api-key"
+    private let apiAuthSecret = "9f8a7b6c5d4e3f2a10aa0c"
     private let headerName = "x-api-auth"
     
     private init() {

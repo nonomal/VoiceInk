@@ -32,14 +32,6 @@ struct WhisperKitModelCardView: View {
             .padding(16)
             .background(CardBackground(isSelected: isCurrent, useAccentGradientWhenSelected: isCurrent))
             
-            Text("Experimental")
-                .font(.caption2)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 2)
-                .background(Color.orange.opacity(0.2))
-                .foregroundColor(.orange)
-                .cornerRadius(6)
-                .offset(x: 10, y: -10) // Adjust position as needed
         }
     }
     
@@ -48,9 +40,14 @@ struct WhisperKitModelCardView: View {
             Text(model.displayName)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(Color(.labelColor))
-            
+            Text("Experimental")
+                .font(.caption2)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2)
+                .background(Color.orange.opacity(0.2))
+                .foregroundColor(.orange)
+                .cornerRadius(6)
             statusBadge
-            
             Spacer()
         }
     }
