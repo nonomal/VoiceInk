@@ -52,14 +52,22 @@ extension WhisperState {
             let modelURL = try await modelStore.downloadModel()
             
             await MainActor.run {
-                self.downloadProgress[modelName] = 1.0
+                self.downloadProgress[modelName] = 0.99
                 self.downloadedWhisperKitModelPaths[model.name] = modelURL.path
             }
             
-            logger.info("✅ WhisperKit model downloaded successfully: \(model.name)")
+            let vad = try await VoiceActivityDetector.modelVAD()
+            let initConfig = WhisperKitProConfig(modelFolder: modelURL.path, voiceActivityDetector: vad)
+            let _ = try await WhisperKitPro(initConfig)
+            
+            await MainActor.run {
+                self.downloadProgress[modelName] = 1.0
+            }
+            
+            logger.info("✅ WhisperKit model downloaded and initialized successfully: \(model.name)")
             
         } catch {
-            logger.error("Failed to download WhisperKit model: \(error.localizedDescription)")
+            logger.error("Failed to download or initialize WhisperKit model: \(error.localizedDescription)")
             await MainActor.run {
                 self.downloadProgress[modelName] = nil
             }
