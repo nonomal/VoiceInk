@@ -12,6 +12,9 @@ extension WhisperState {
                 } else {
                     return false
                 }
+            case .whisperKit:
+                guard let whisperKitModel = model as? WhisperKitModel else { return false }
+                return downloadedWhisperKitModelPaths[whisperKitModel.name] != nil
             case .groq:
                 let key = UserDefaults.standard.string(forKey: "GROQAPIKey")
                 return key != nil && !key!.isEmpty

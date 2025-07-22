@@ -2,9 +2,10 @@ import Foundation
 import IOKit
 
 class PolarService {
-    private let organizationId = "Org"
-    private let apiToken = "Token"
-    private let baseURL = "https://api.polar.sh"
+    // Credentials will be fetched securely from KeyFetcher
+    private var organizationId: String?
+    private var apiToken: String?
+    private var baseURL: String?
     
     struct LicenseValidationResponse: Codable {
         let status: String
@@ -34,6 +35,47 @@ class PolarService {
         let status: String
     }
     
+    // Fetch credentials securely from KeyFetcher
+    private func fetchCredentials() async -> (organizationId: String, apiToken: String, baseURL: String)? {
+        return await withCheckedContinuation { continuation in
+            var fetchedOrgId: String?
+            var fetchedToken: String?
+            var fetchedBaseURL: String?
+            let group = DispatchGroup()
+            
+            // Fetch Organization ID
+            group.enter()
+            KeyFetcher.shared.fetchPolarOrganizationId { orgId in
+                fetchedOrgId = orgId
+                group.leave()
+            }
+            
+            // Fetch API Token
+            group.enter()
+            KeyFetcher.shared.fetchPolarApiToken { token in
+                fetchedToken = token
+                group.leave()
+            }
+            
+            // Fetch Base URL
+            group.enter()
+            KeyFetcher.shared.fetchPolarBaseURL { baseURL in
+                fetchedBaseURL = baseURL
+                group.leave()
+            }
+            
+            group.notify(queue: .main) {
+                if let orgId = fetchedOrgId,
+                   let token = fetchedToken,
+                   let baseURL = fetchedBaseURL {
+                    continuation.resume(returning: (orgId, token, baseURL))
+                } else {
+                    continuation.resume(returning: nil)
+                }
+            }
+        }
+    }
+
     // Generate a unique device identifier
     private func getDeviceIdentifier() -> String {
         // Use the macOS serial number or a generated UUID that persists
@@ -69,15 +111,19 @@ class PolarService {
     
     // Check if a license key requires activation
     func checkLicenseRequiresActivation(_ key: String) async throws -> (isValid: Bool, requiresActivation: Bool, activationsLimit: Int?) {
-        let url = URL(string: "\(baseURL)/v1/customer-portal/license-keys/validate")!
+        guard let credentials = await fetchCredentials() else {
+            throw NSError(domain: "PolarService", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch Polar service credentials"])
+        }
+        
+        let url = URL(string: "\(credentials.baseURL)/v1/customer-portal/license-keys/validate")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(apiToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(credentials.apiToken)", forHTTPHeaderField: "Authorization")
         
         let body: [String: Any] = [
             "key": key,
-            "organization_id": organizationId
+            "organization_id": credentials.organizationId
         ]
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -104,18 +150,22 @@ class PolarService {
     
     // Activate a license key on this device
     func activateLicenseKey(_ key: String) async throws -> (activationId: String, activationsLimit: Int) {
-        let url = URL(string: "\(baseURL)/v1/customer-portal/license-keys/activate")!
+        guard let credentials = await fetchCredentials() else {
+            throw NSError(domain: "PolarService", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch Polar service credentials"])
+        }
+        
+        let url = URL(string: "\(credentials.baseURL)/v1/customer-portal/license-keys/activate")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(apiToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(credentials.apiToken)", forHTTPHeaderField: "Authorization")
         
         let deviceId = getDeviceIdentifier()
         let hostname = Host.current().localizedName ?? "Unknown Mac"
         
         let activationRequest = ActivationRequest(
             key: key,
-            organization_id: organizationId,
+            organization_id: credentials.organizationId,
             label: hostname,
             meta: ["device_id": deviceId]
         )
@@ -145,15 +195,19 @@ class PolarService {
     
     // Validate a license key with an activation ID
     func validateLicenseKeyWithActivation(_ key: String, activationId: String) async throws -> Bool {
-        let url = URL(string: "\(baseURL)/v1/customer-portal/license-keys/validate")!
+        guard let credentials = await fetchCredentials() else {
+            throw NSError(domain: "PolarService", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch Polar service credentials"])
+        }
+        
+        let url = URL(string: "\(credentials.baseURL)/v1/customer-portal/license-keys/validate")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(apiToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(credentials.apiToken)", forHTTPHeaderField: "Authorization")
         
         let body: [String: Any] = [
             "key": key,
-            "organization_id": organizationId,
+            "organization_id": credentials.organizationId,
             "activation_id": activationId
         ]
         

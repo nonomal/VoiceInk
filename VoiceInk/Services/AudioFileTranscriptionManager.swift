@@ -21,6 +21,7 @@ class AudioTranscriptionManager: ObservableObject {
     private var localTranscriptionService: LocalTranscriptionService?
     private lazy var cloudTranscriptionService = CloudTranscriptionService()
     private lazy var nativeAppleTranscriptionService = NativeAppleTranscriptionService()
+    private var whisperKitTranscriptionService: WhisperKitTranscriptionService?
     
     enum ProcessingPhase {
         case idle
@@ -64,9 +65,12 @@ class AudioTranscriptionManager: ObservableObject {
                     throw TranscriptionError.noModelSelected
                 }
                 
-                // Initialize local transcription service if needed
+                // Initialize transcription services if needed
                 if localTranscriptionService == nil {
-                    localTranscriptionService = LocalTranscriptionService(modelsDirectory: whisperState.modelsDirectory, whisperState: whisperState)
+                    localTranscriptionService = LocalTranscriptionService(modelsDirectory: whisperState.modelsDirectory)
+                }
+                if whisperKitTranscriptionService == nil {
+                    whisperKitTranscriptionService = WhisperKitTranscriptionService(whisperState: whisperState)
                 }
                 
                 // Process audio file
@@ -98,6 +102,8 @@ class AudioTranscriptionManager: ObservableObject {
                     text = try await localTranscriptionService!.transcribe(audioURL: permanentURL, model: currentModel)
                 case .nativeApple:
                     text = try await nativeAppleTranscriptionService.transcribe(audioURL: permanentURL, model: currentModel)
+                case .whisperKit:
+                    text = try await whisperKitTranscriptionService!.transcribe(audioURL: permanentURL, model: currentModel)
                 default: // Cloud models
                     text = try await cloudTranscriptionService.transcribe(audioURL: permanentURL, model: currentModel)
                 }

@@ -1,32 +1,6 @@
 import Foundation
  
- struct LocalModel: TranscriptionModel {
-     let id = UUID()
-     let name: String
-     let displayName: String
-     let size: String
-     let supportedLanguages: [String: String]
-     let description: String
-     let speed: Double
-     let accuracy: Double
-     let ramUsage: Double
-     let hash: String
-     let provider: ModelProvider = .local
- 
-     var downloadURL: String {
-         "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/\(filename)"
-     }
- 
-     var filename: String {
-         "\(name).bin"
-     }
- 
-     var isMultilingualModel: Bool {
-         supportedLanguages.count > 1
-     }
- }
- 
- enum PredefinedModels {
+enum PredefinedModels {
     static func getLanguageDictionary(isMultilingual: Bool, provider: ModelProvider = .local) -> [String: String] {
         if !isMultilingual {
             return ["en": "English"]
@@ -100,8 +74,22 @@ import Foundation
     ]
     
     static var models: [any TranscriptionModel] {
-        return predefinedModels + CustomModelManager.shared.customModels
+        return predefinedModels + whisperKitModels + CustomModelManager.shared.customModels
     }
+
+    static let whisperKitModels: [WhisperKitModel] = [
+        WhisperKitModel(
+            name: "nvidia_parakeet-v2",
+            displayName: "Parakeet v2",
+            size: "1.2 GB",
+            supportedLanguages: getLanguageDictionary(isMultilingual: false, provider: .whisperKit),
+            description: "NVIDIA's state-of-the-art speech-to-text model optimized for English transcription.",
+            speed: 0.99,
+            accuracy: 0.97,
+            ramUsage: 1.2,
+            modelRepo: "argmaxinc/parakeetkit-pro"
+        )
+    ]
     
     private static let predefinedModels: [any TranscriptionModel] = [
         // Native Apple Model

@@ -18,6 +18,7 @@ class AudioTranscriptionService: ObservableObject {
     private let localTranscriptionService: LocalTranscriptionService
     private lazy var cloudTranscriptionService = CloudTranscriptionService()
     private lazy var nativeAppleTranscriptionService = NativeAppleTranscriptionService()
+    private let whisperKitTranscriptionService: WhisperKitTranscriptionService
     
     enum TranscriptionError: Error {
         case noAudioFile
@@ -31,6 +32,7 @@ class AudioTranscriptionService: ObservableObject {
         self.whisperState = whisperState
         self.enhancementService = whisperState.enhancementService
         self.localTranscriptionService = LocalTranscriptionService(modelsDirectory: whisperState.modelsDirectory, whisperState: whisperState)
+        self.whisperKitTranscriptionService = WhisperKitTranscriptionService(whisperState: whisperState)
     }
     
     func retranscribeAudio(from url: URL, using model: any TranscriptionModel) async throws -> Transcription {
@@ -52,6 +54,8 @@ class AudioTranscriptionService: ObservableObject {
                 text = try await localTranscriptionService.transcribe(audioURL: url, model: model)
             case .nativeApple:
                 text = try await nativeAppleTranscriptionService.transcribe(audioURL: url, model: model)
+            case .whisperKit:
+                text = try await whisperKitTranscriptionService.transcribe(audioURL: url, model: model)
             default: // Cloud models
                 text = try await cloudTranscriptionService.transcribe(audioURL: url, model: model)
             }

@@ -333,15 +333,73 @@ extension WhisperState {
     // MARK: - Resource Management
     
     func cleanupModelResources() async {
+        // Cleanup local Whisper models
         await whisperContext?.releaseResources()
         whisperContext = nil
         isModelLoaded = false
+        
+        // Cleanup WhisperKit models
+        if let whisperKitPro = whisperKitPro {
+            logger.info("🔄 Unloading WhisperKit model: \(self.loadedWhisperKitModel?.name ?? "unknown")")
+            await whisperKitPro.unloadModels()
+            self.whisperKitPro = nil
+            self.loadedWhisperKitModel = nil
+            logger.info("✅ WhisperKit model unloaded successfully")
+        }
     }
     
     // MARK: - Helper Methods
     
     private func logError(_ message: String, _ error: Error) {
         self.logger.error("\(message): \(error.localizedDescription)")
+    }
+    
+    // MARK: - WhisperKit Model Management
+    
+    func deleteWhisperKitModel(_ model: WhisperKitModel) async {
+        guard let modelPath = downloadedWhisperKitModelPaths[model.name] else {
+            logger.error("Could not find path for model to delete: \(model.name)")
+            return
+        }
+        
+        // Cleanup loaded instance if this model is currently loaded
+        if let loadedModel = loadedWhisperKitModel, loadedModel.name == model.name {
+            logger.info("🔄 Cleaning up loaded WhisperKit instance before deletion: \(model.name)")
+            if let whisperKitPro = whisperKitPro {
+                await whisperKitPro.unloadModels()
+            }
+            self.whisperKitPro = nil
+            self.loadedWhisperKitModel = nil
+        }
+        
+        do {
+            try FileManager.default.removeItem(atPath: modelPath)
+            await MainActor.run {
+                downloadedWhisperKitModelPaths.removeValue(forKey: model.name)
+                
+                // If the deleted model was the default, clear it
+                if currentTranscriptionModel?.name == model.name {
+                    currentTranscriptionModel = nil
+                    UserDefaults.standard.removeObject(forKey: "CurrentTranscriptionModel")
+                }
+
+                refreshAllAvailableModels()
+            }
+        } catch {
+            logger.error("Failed to delete WhisperKit model: \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: - Model Persistence
+    
+    func saveDownloadedWhisperKitModelPaths() {
+        UserDefaults.standard.set(downloadedWhisperKitModelPaths, forKey: "DownloadedWhisperKitModelPaths")
+    }
+    
+    func loadDownloadedWhisperKitModelPaths() {
+        if let savedPaths = UserDefaults.standard.dictionary(forKey: "DownloadedWhisperKitModelPaths") as? [String: String] {
+            self.downloadedWhisperKitModelPaths = savedPaths
+        }
     }
 }
 

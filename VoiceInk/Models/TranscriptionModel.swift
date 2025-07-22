@@ -3,6 +3,7 @@ import Foundation
 // Enum to differentiate between model providers
 enum ModelProvider: String, Codable, Hashable, CaseIterable {
     case local = "Local"
+    case whisperKit = "WhisperKit"
     case groq = "Groq"
     case elevenLabs = "ElevenLabs"
     case deepgram = "Deepgram"
@@ -33,17 +34,6 @@ extension TranscriptionModel {
     var language: String {
         isMultilingualModel ? "Multilingual" : "English-only"
     }
-}
-
-// A new struct for Apple's native models
-struct NativeAppleModel: TranscriptionModel {
-    let id = UUID()
-    let name: String
-    let displayName: String
-    let description: String
-    let provider: ModelProvider = .nativeApple
-    let isMultilingualModel: Bool
-    let supportedLanguages: [String: String]
 }
 
 // A new struct for cloud models
@@ -95,4 +85,60 @@ struct CustomCloudModel: TranscriptionModel, Codable {
         self.isMultilingualModel = isMultilingual
         self.supportedLanguages = supportedLanguages ?? PredefinedModels.getLanguageDictionary(isMultilingual: isMultilingual)
     }
+} 
+
+struct WhisperKitModel: TranscriptionModel {
+    let id = UUID()
+    let name: String
+    let displayName: String
+    let size: String
+    let supportedLanguages: [String: String]
+    let description: String
+    let speed: Double
+    let accuracy: Double
+    let ramUsage: Double
+    let provider: ModelProvider = .whisperKit
+    let modelRepo: String
+    var modelToken: String? = nil
+
+    var isMultilingualModel: Bool {
+        return supportedLanguages.count > 1
+    }
+} 
+
+struct LocalModel: TranscriptionModel {
+    let id = UUID()
+    let name: String
+    let displayName: String
+    let size: String
+    let supportedLanguages: [String: String]
+    let description: String
+    let speed: Double
+    let accuracy: Double
+    let ramUsage: Double
+    let hash: String
+    let provider: ModelProvider = .local
+
+    var downloadURL: String {
+        "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/\(filename)"
+    }
+
+    var filename: String {
+        "\(name).bin"
+    }
+
+    var isMultilingualModel: Bool {
+        supportedLanguages.count > 1
+    }
+}
+
+// A new struct for Apple's native models
+struct NativeAppleModel: TranscriptionModel {
+    let id = UUID()
+    let name: String
+    let displayName: String
+    let description: String
+    let provider: ModelProvider = .nativeApple
+    let isMultilingualModel: Bool
+    let supportedLanguages: [String: String]
 } 

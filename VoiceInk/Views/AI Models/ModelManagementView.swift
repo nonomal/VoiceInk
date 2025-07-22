@@ -116,9 +116,12 @@ struct ModelManagementView: View {
             } else {
                 VStack(spacing: 12) {
                     ForEach(filteredModels, id: \.id) { model in
+                        let isDownloaded = (model is LocalModel && whisperState.availableModels.contains { $0.name == model.name }) ||
+                                           (model is WhisperKitModel && whisperState.downloadedWhisperKitModelPaths.keys.contains(model.name))
+                        
                         ModelCardRowView(
                             model: model,
-                            isDownloaded: whisperState.availableModels.contains { $0.name == model.name },
+                            isDownloaded: isDownloaded,
                             isCurrent: whisperState.currentTranscriptionModel?.name == model.name,
                             downloadProgress: whisperState.downloadProgress,
                             modelURL: whisperState.availableModels.first { $0.name == model.name }?.url,
@@ -140,6 +143,15 @@ struct ModelManagementView: View {
                                         }
                                     }
                                     isShowingDeleteAlert = true
+                                } else if let whisperKitModel = model as? WhisperKitModel {
+                                    alertTitle = "Delete Model"
+                                    alertMessage = "Are you sure you want to delete the model '\(whisperKitModel.displayName)'?"
+                                    deleteActionClosure = {
+                                        Task {
+                                            await whisperState.deleteWhisperKitModel(whisperKitModel)
+                                        }
+                                    }
+                                    isShowingDeleteAlert = true
                                 }
                             },
                             setDefaultAction: {
@@ -152,10 +164,19 @@ struct ModelManagementView: View {
                                     Task {
                                         await whisperState.downloadModel(localModel)
                                     }
+                                } else if let whisperKitModel = model as? WhisperKitModel {
+                                    Task {
+                                        await whisperState.downloadWhisperKitModel(model: whisperKitModel)
+                                    }
                                 }
                             },
                             editAction: model.provider == .custom ? { customModel in
                                 customModelToEdit = customModel
+                            } : nil,
+                            showInFinderAction: model.provider == .whisperKit ? {
+                                if let modelPath = whisperState.downloadedWhisperKitModelPaths[model.name] {
+                                    NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: modelPath)
+                                }
                             } : nil
                         )
                     }
@@ -190,7 +211,7 @@ struct ModelManagementView: View {
                 return index1 < index2
             }
         case .local:
-            return whisperState.allAvailableModels.filter { $0.provider == .local || $0.provider == .nativeApple }
+            return whisperState.allAvailableModels.filter { $0.provider == .local || $0.provider == .nativeApple || $0.provider == .whisperKit }
         case .cloud:
             let cloudProviders: [ModelProvider] = [.groq, .elevenLabs, .deepgram, .mistral]
             return whisperState.allAvailableModels.filter { cloudProviders.contains($0.provider) }

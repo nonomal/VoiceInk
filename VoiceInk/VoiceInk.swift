@@ -3,6 +3,7 @@ import SwiftData
 import Sparkle
 import AppKit
 import OSLog
+import Argmax
 
 @main
 struct VoiceInkApp: App {
@@ -22,6 +23,21 @@ struct VoiceInkApp: App {
     private let audioCleanupManager = AudioCleanupManager.shared
     
     init() {
+        // Initialize Argmax SDK on app launch
+        Task {
+            KeyFetcher.shared.fetchArgmaxKey { apiKey in
+                guard let apiKey = apiKey else {
+                    print("⚠️ Failed to fetch Argmax API key - SDK initialization skipped")
+                    return
+                }
+                
+                Task {
+                    await ArgmaxSDK.with(ArgmaxConfig(apiKey: apiKey))
+                    print("✅ Argmax SDK initialized successfully")
+                }
+            }
+        }
+
         do {
             let schema = Schema([
                 Transcription.self

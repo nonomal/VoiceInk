@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E13E46302E2E0AA500AA638D /* Argmax in Frameworks */ = {isa = PBXBuildFile; productRef = E13E462F2E2E0AA500AA638D /* Argmax */; };
 		E1A261122CC143AC00B233D1 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = E1A261112CC143AC00B233D1 /* KeyboardShortcuts */; };
 		E1A8C8CB2E1257B7003E58EC /* whisper.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1A8C8CA2E1257B7003E58EC /* whisper.xcframework */; };
 		E1A8C8CC2E1257B7003E58EC /* whisper.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = E1A8C8CA2E1257B7003E58EC /* whisper.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -76,6 +77,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E13E46302E2E0AA500AA638D /* Argmax in Frameworks */,
 				E1ADD45A2CC5352A00303ECB /* LaunchAtLogin in Frameworks */,
 				E1ADD45F2CC544F100303ECB /* Sparkle in Frameworks */,
 				E1A261122CC143AC00B233D1 /* KeyboardShortcuts in Frameworks */,
@@ -155,6 +157,7 @@
 				E1ADD4592CC5352A00303ECB /* LaunchAtLogin */,
 				E1ADD45E2CC544F100303ECB /* Sparkle */,
 				E1F5FA792DA6CBF900B1FD8A /* Zip */,
+				E13E462F2E2E0AA500AA638D /* Argmax */,
 			);
 			productName = VoiceInk;
 			productReference = E11473B02CBE0F0A00318EE4 /* VoiceInk.app */;
@@ -243,6 +246,7 @@
 				E1ADD4582CC5352A00303ECB /* XCRemoteSwiftPackageReference "LaunchAtLogin-Modern" */,
 				E1ADD45D2CC544F100303ECB /* XCRemoteSwiftPackageReference "Sparkle" */,
 				E1F5FA782DA6CBF900B1FD8A /* XCRemoteSwiftPackageReference "Zip" */,
+				E13E462E2E2E0AA500AA638D /* XCRemoteSwiftPackageReference "argmax-sdk-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E11473B12CBE0F0A00318EE4 /* Products */;
@@ -612,6 +616,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		E13E462E2E2E0AA500AA638D /* XCRemoteSwiftPackageReference "argmax-sdk-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "argmaxinc.argmax-sdk-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.6.0;
+			};
+		};
 		E1A261102CC143AC00B233D1 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/sindresorhus/KeyboardShortcuts";
@@ -647,6 +659,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		E13E462F2E2E0AA500AA638D /* Argmax */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E13E462E2E2E0AA500AA638D /* XCRemoteSwiftPackageReference "argmax-sdk-swift" */;
+			productName = Argmax;
+		};
 		E1A261112CC143AC00B233D1 /* KeyboardShortcuts */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = E1A261102CC143AC00B233D1 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;

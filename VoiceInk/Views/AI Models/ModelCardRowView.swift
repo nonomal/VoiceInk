@@ -13,6 +13,7 @@ struct ModelCardRowView: View {
     var setDefaultAction: () -> Void
     var downloadAction: () -> Void
     var editAction: ((CustomCloudModel) -> Void)?
+    var showInFinderAction: (() -> Void)?
     
     var body: some View {
         Group {
@@ -36,6 +37,19 @@ struct ModelCardRowView: View {
                         model: nativeAppleModel,
                         isCurrent: isCurrent,
                         setDefaultAction: setDefaultAction
+                    )
+                }
+            case .whisperKit:
+                if let whisperKitModel = model as? WhisperKitModel {
+                    WhisperKitModelCardView(
+                        model: whisperKitModel,
+                        isDownloaded: isDownloaded,
+                        isCurrent: isCurrent,
+                        downloadProgress: downloadProgress,
+                        deleteAction: deleteAction,
+                        setDefaultAction: setDefaultAction,
+                        downloadAction: downloadAction,
+                        showInFinderAction: showInFinderAction ?? {}
                     )
                 }
             case .groq, .elevenLabs, .deepgram, .mistral:

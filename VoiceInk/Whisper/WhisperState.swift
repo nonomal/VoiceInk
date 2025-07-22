@@ -5,6 +5,8 @@ import SwiftData
 import AppKit
 import KeyboardShortcuts
 import os
+import Argmax
+import Combine
 
 // MARK: - Recording State Machine
 enum RecordingState: Equatable {
@@ -49,6 +51,9 @@ class WhisperState: NSObject, ObservableObject {
     }
     
     var whisperContext: WhisperContext?
+    // WhisperKit model instance for reuse
+    var whisperKitPro: WhisperKitPro?
+    var loadedWhisperKitModel: WhisperKitModel?
     let recorder = Recorder()
     var recordedFile: URL? = nil
     let whisperPrompt = WhisperPrompt()
@@ -62,6 +67,7 @@ class WhisperState: NSObject, ObservableObject {
     private var localTranscriptionService: LocalTranscriptionService!
     private lazy var cloudTranscriptionService = CloudTranscriptionService()
     private lazy var nativeAppleTranscriptionService = NativeAppleTranscriptionService()
+    private var whisperKitTranscriptionService: WhisperKitTranscriptionService!
     
     private var modelUrl: URL? {
         let possibleURLs = [
@@ -93,6 +99,14 @@ class WhisperState: NSObject, ObservableObject {
     // For model progress tracking
     @Published var downloadProgress: [String: Double] = [:]
     
+    // For WhisperKit model tracking
+    var cancellables = Set<AnyCancellable>()
+    @Published var downloadedWhisperKitModelPaths: [String: String] = [:] {
+        didSet {
+            saveDownloadedWhisperKitModelPaths()
+        }
+    }
+    
     init(modelContext: ModelContext, enhancementService: AIEnhancementService? = nil) {
         self.modelContext = modelContext
         let appSupportDirectory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -105,6 +119,8 @@ class WhisperState: NSObject, ObservableObject {
         self.licenseViewModel = LicenseViewModel()
         
         super.init()
+
+        self.whisperKitTranscriptionService = WhisperKitTranscriptionService(whisperState: self)
         
         // Set the whisperState reference after super.init()
         self.localTranscriptionService = LocalTranscriptionService(modelsDirectory: self.modelsDirectory, whisperState: self)
@@ -115,8 +131,9 @@ class WhisperState: NSObject, ObservableObject {
         loadAvailableModels()
         loadCurrentTranscriptionModel()
         refreshAllAvailableModels()
+        loadDownloadedWhisperKitModelPaths()
     }
-    
+
     private func createRecordingsDirectoryIfNeeded() {
         do {
             try FileManager.default.createDirectory(at: recordingsDirectory, withIntermediateDirectories: true, attributes: nil)
@@ -162,7 +179,7 @@ class WhisperState: NSObject, ObservableObject {
                             let fileName = "\(UUID().uuidString).wav"
                             let permanentURL = self.recordingsDirectory.appendingPathComponent(fileName)
                             self.recordedFile = permanentURL
-        
+
                             try await self.recorder.startRecording(toOutputFile: permanentURL)
         
                             await MainActor.run {
@@ -179,6 +196,18 @@ class WhisperState: NSObject, ObservableObject {
                                         try await self.loadModel(localWhisperModel)
                                     } catch {
                                         self.logger.error("❌ Model loading failed: \(error.localizedDescription)")
+                                    }
+                                }
+                            }
+                            
+                            // Load WhisperKit model if it's a WhisperKit model and not already loaded
+                            if let model = self.currentTranscriptionModel, model.provider == .whisperKit {
+                                if let whisperKitModel = model as? WhisperKitModel,
+                                   self.whisperKitPro == nil {
+                                    do {
+                                        try await self.loadWhisperKitModel(whisperKitModel)
+                                    } catch {
+                                        self.logger.error("❌ WhisperKit model loading failed: \(error.localizedDescription)")
                                     }
                                 }
                             }
@@ -241,6 +270,8 @@ class WhisperState: NSObject, ObservableObject {
                 transcriptionService = localTranscriptionService
             case .nativeApple:
                 transcriptionService = nativeAppleTranscriptionService
+            case .whisperKit:
+                transcriptionService = whisperKitTranscriptionService
             default:
                 transcriptionService = cloudTranscriptionService
             }
