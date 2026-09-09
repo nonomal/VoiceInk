@@ -71,9 +71,10 @@ struct SettingsView: View {
                     }
                 }
             } header: {
-                Text("Shortcuts")
-            } footer: {
-                Text("Select a shortcut field, then press a key combination, the middle button, or an auxiliary mouse button.")
+                HStack(spacing: 4) {
+                    Text("Shortcuts")
+                    InfoTip("Supports keyboard combinations and mouse buttons.")
+                }
             }
 
             Section("Additional Shortcuts") {
