@@ -9,6 +9,7 @@ final class ShortcutMonitor {
         case keyUp
         case flagsChanged
         case mouseDown
+        case mouseDragged
         case mouseUp
     }
 
@@ -136,7 +137,7 @@ final class ShortcutMonitor {
         switch eventKind {
         case .keyDown, .keyUp, .flagsChanged:
             inputCode = UInt16(clamping: event.getIntegerValueField(.keyboardEventKeycode))
-        case .mouseDown, .mouseUp:
+        case .mouseDown, .mouseDragged, .mouseUp:
             inputCode = UInt16(clamping: event.getIntegerValueField(.mouseEventButtonNumber))
         }
 
@@ -176,7 +177,15 @@ final class ShortcutMonitor {
         modifierFlags: NSEvent.ModifierFlags,
         eventTime: TimeInterval
     ) -> Bool {
-        var shouldSuppress = kind == .mouseUp && suppressedMouseButtons.remove(inputCode) != nil
+        var shouldSuppress: Bool
+        switch kind {
+        case .mouseDragged:
+            shouldSuppress = suppressedMouseButtons.contains(inputCode)
+        case .mouseUp:
+            shouldSuppress = suppressedMouseButtons.remove(inputCode) != nil
+        case .keyDown, .keyUp, .flagsChanged, .mouseDown:
+            shouldSuppress = false
+        }
 
         if kind == .keyDown {
             handleShortcutInterruptions(keyCode: inputCode, eventTime: eventTime)
@@ -225,7 +234,9 @@ final class ShortcutMonitor {
             case .none:
                 break
             case .suppress:
-                shouldSuppress = true
+                if kind != .flagsChanged {
+                    shouldSuppress = true
+                }
             case .keyDown:
                 state.isDown = true
                 state.pressedAt = eventTime
@@ -241,7 +252,9 @@ final class ShortcutMonitor {
                 state.pressedAt = nil
                 state.isInterrupted = false
                 shortcuts[action] = state
-                shouldSuppress = true
+                if kind != .flagsChanged {
+                    shouldSuppress = true
+                }
                 dispatchShortcutUp(for: action, eventTime: eventTime)
             }
         }
@@ -282,7 +295,7 @@ final class ShortcutMonitor {
                 forKeyCode: shortcut.keyCode
             )
             return currentFlags.isSuperset(of: shortcut.modifierFlags) ? .suppress : .keyUp
-        case .mouseDown, .mouseUp:
+        case .mouseDown, .mouseDragged, .mouseUp:
             return .none
         }
     }
@@ -313,7 +326,7 @@ final class ShortcutMonitor {
 
             let currentFlags = Shortcut.normalizedModifierFlags(modifierFlags, forKeyCode: nil)
             return currentFlags.isSuperset(of: shortcut.modifierFlags) ? .suppress : .keyUp
-        case .keyDown, .keyUp:
+        case .keyDown, .keyUp, .mouseDragged:
             return .none
         }
     }
@@ -398,6 +411,7 @@ final class ShortcutMonitor {
         CGEventType.keyUp,
         CGEventType.flagsChanged,
         CGEventType.otherMouseDown,
+        CGEventType.otherMouseDragged,
         CGEventType.otherMouseUp,
     ].reduce(CGEventMask(0)) { mask, type in
         mask | (CGEventMask(1) << Int(type.rawValue))
@@ -415,6 +429,8 @@ private extension ShortcutMonitor.EventKind {
             self = .flagsChanged
         case .otherMouseDown:
             self = .mouseDown
+        case .otherMouseDragged:
+            self = .mouseDragged
         case .otherMouseUp:
             self = .mouseUp
         default:

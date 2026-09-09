@@ -135,16 +135,6 @@ class RecordingShortcutManager: ObservableObject {
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 100_000_000)
             self.refreshShortcutMonitoring()
-            if ShortcutMigration.consumeLegacyMiddleClickMigrationNotice() {
-                NotificationManager.shared.showNotification(
-                    title: String(
-                        localized:
-                            "Middle-click recording could not be migrated because both recording shortcuts are already assigned. Replace either shortcut to use Middle Click."
-                    ),
-                    type: .warning,
-                    duration: 8
-                )
-            }
         }
     }
 
