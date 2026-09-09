@@ -27,7 +27,6 @@ struct SettingsView: View {
     @State private var showLanguageRestartAlert = false
     @State private var cancelRecordingShortcutRecorderResetID = 0
 
-    @State private var isMiddleClickExpanded = false
     @State private var isRestoreClipboardExpanded = false
 
     var body: some View {
@@ -73,6 +72,8 @@ struct SettingsView: View {
                 }
             } header: {
                 Text("Shortcuts")
+            } footer: {
+                Text("Select a shortcut field, then press a key combination, the middle button, or an auxiliary mouse button.")
             }
 
             Section("Additional Shortcuts") {
@@ -125,28 +126,6 @@ struct SettingsView: View {
                     }
                 }
 
-                ExpandableSettingsRow(
-                    isExpanded: $isMiddleClickExpanded,
-                    isEnabled: $recordingShortcutManager.isMiddleClickToggleEnabled,
-                    label: "Middle-Click Recording"
-                ) {
-                    LabeledContent("Activation Delay") {
-                        HStack {
-                            TextField(
-                                "", value: $recordingShortcutManager.middleClickActivationDelay,
-                                formatter: {
-                                    let formatter = NumberFormatter()
-                                    formatter.minimum = 0
-                                    return formatter
-                                }()
-                            )
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 60)
-                            Text("ms")
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
             }
 
             Section("Pasting") {

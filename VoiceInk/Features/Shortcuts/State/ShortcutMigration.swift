@@ -33,6 +33,17 @@ enum ShortcutMigration {
     static func migrateLegacyShortcutsIfNeeded() {
         discardLegacyCustomRecordingShortcutsIfNeeded()
         migrateLegacyKeyboardShortcutsIfNeeded()
+        migrateLegacyMiddleClickShortcutIfNeeded()
+    }
+
+    static func consumeLegacyMiddleClickMigrationNotice() -> Bool {
+        let defaults = UserDefaults.standard
+        guard defaults.bool(forKey: legacyMiddleClickMigrationNoticeKey) else {
+            return false
+        }
+
+        defaults.removeObject(forKey: legacyMiddleClickMigrationNoticeKey)
+        return true
     }
 
     static func migrateLegacyKeyboardShortcutsIfNeeded() {
@@ -195,6 +206,52 @@ enum ShortcutMigration {
 
         UserDefaults.standard.set(true, forKey: migrationKey)
     }
+
+    private static func migrateLegacyMiddleClickShortcutIfNeeded() {
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: legacyMiddleClickMigrationKey) else {
+            return
+        }
+
+        defer {
+            defaults.removeObject(forKey: "isMiddleClickToggleEnabled")
+            defaults.removeObject(forKey: "middleClickActivationDelay")
+            defaults.set(true, forKey: legacyMiddleClickMigrationKey)
+        }
+
+        guard defaults.bool(forKey: "isMiddleClickToggleEnabled") else {
+            return
+        }
+
+        let destinationAction: ShortcutAction
+        if ShortcutStore.shortcut(for: .secondaryRecording) == nil {
+            destinationAction = .secondaryRecording
+        } else if ShortcutStore.shortcut(for: .primaryRecording) == nil {
+            destinationAction = .primaryRecording
+        } else {
+            defaults.set(true, forKey: legacyMiddleClickMigrationNoticeKey)
+            return
+        }
+
+        let middleClickShortcut = Shortcut.mouseButton(buttonNumber: 2)
+        ShortcutStore.setShortcut(middleClickShortcut, for: destinationAction)
+        guard ShortcutStore.shortcut(for: destinationAction) == middleClickShortcut else {
+            defaults.set(true, forKey: legacyMiddleClickMigrationNoticeKey)
+            return
+        }
+
+        defaults.set(
+            RecordingShortcutManager.ShortcutSelection.custom.rawValue,
+            forKey: recordingShortcutKey(for: destinationAction)
+        )
+        defaults.set(
+            RecordingShortcutManager.Mode.toggle.rawValue,
+            forKey: recordingShortcutModeKey(for: destinationAction)
+        )
+    }
+
+    private static let legacyMiddleClickMigrationKey = "Shortcut_LegacyMiddleClickMigrated"
+    private static let legacyMiddleClickMigrationNoticeKey = "Shortcut_LegacyMiddleClickNeedsReassignmentNotice"
 
     private static func legacyPresetShortcut(for rawValue: String) -> Shortcut? {
         switch rawValue {

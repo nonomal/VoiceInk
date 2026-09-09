@@ -29,18 +29,6 @@ class RecordingShortcutManager: ObservableObject {
             UserDefaults.standard.set(secondaryRecordingShortcutMode.rawValue, forKey: "secondaryRecordingShortcutMode")
         }
     }
-    @Published var isMiddleClickToggleEnabled: Bool {
-        didSet {
-            UserDefaults.standard.set(isMiddleClickToggleEnabled, forKey: "isMiddleClickToggleEnabled")
-            refreshShortcutMonitoring()
-        }
-    }
-    @Published var middleClickActivationDelay: Int {
-        didSet {
-            UserDefaults.standard.set(middleClickActivationDelay, forKey: "middleClickActivationDelay")
-        }
-    }
-
     private var engine: VoiceInkEngine
     private var recorderUIManager: RecorderUIManager
     private var recorderPanelShortcutManager: RecorderPanelShortcutManager
@@ -49,15 +37,6 @@ class RecordingShortcutManager: ObservableObject {
     private var shortcutChangeObserver: NSObjectProtocol?
     private let shortcutModeHandler: RecordingShortcutModeHandler
     private let primaryRecordingShortcutModeSource: RecordingShortcutModeSource
-
-    // MARK: - Helper Properties
-    private var canHandleShortcutAction: Bool {
-        Self.canHandleShortcutAction(for: engine.recordingState)
-    }
-
-    // Middle-click event monitoring
-    private var middleClickMonitors: [Any?] = []
-    private var middleClickTask: Task<Void, Never>?
 
     enum Mode: String, CaseIterable {
         case toggle = "toggle"
@@ -109,9 +88,6 @@ class RecordingShortcutManager: ObservableObject {
             for: .secondaryRecording
         )
 
-        self.isMiddleClickToggleEnabled = UserDefaults.standard.bool(forKey: "isMiddleClickToggleEnabled")
-        self.middleClickActivationDelay = UserDefaults.standard.integer(forKey: "middleClickActivationDelay")
-
         let shortcutModeHandler = RecordingShortcutModeHandler(
             canHandleShortcutAction: {
                 Self.canHandleShortcutAction(for: engine.recordingState)
@@ -159,6 +135,16 @@ class RecordingShortcutManager: ObservableObject {
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 100_000_000)
             self.refreshShortcutMonitoring()
+            if ShortcutMigration.consumeLegacyMiddleClickMigrationNotice() {
+                NotificationManager.shared.showNotification(
+                    title: String(
+                        localized:
+                            "Middle-click recording could not be migrated because both recording shortcuts are already assigned. Replace either shortcut to use Middle Click."
+                    ),
+                    type: .warning,
+                    duration: 8
+                )
+            }
         }
     }
 
@@ -166,41 +152,6 @@ class RecordingShortcutManager: ObservableObject {
         removeAllMonitoring()
 
         refreshShortcutMonitor()
-        setupMiddleClickMonitoring()
-    }
-
-    private func setupMiddleClickMonitoring() {
-        guard isMiddleClickToggleEnabled else { return }
-
-        // Mouse Down
-        let downMonitor = NSEvent.addGlobalMonitorForEvents(matching: .otherMouseDown) { [weak self] event in
-            guard let self = self, event.buttonNumber == 2 else { return }
-
-            self.middleClickTask?.cancel()
-            self.middleClickTask = Task {
-                do {
-                    let delay = UInt64(self.middleClickActivationDelay) * 1_000_000  // ms to ns
-                    try await Task.sleep(nanoseconds: delay)
-
-                    guard self.isMiddleClickToggleEnabled, !Task.isCancelled else { return }
-
-                    Task { @MainActor in
-                        guard self.canHandleShortcutAction else { return }
-                        await self.recorderUIManager.toggleRecorderPanel()
-                    }
-                } catch {
-                    // Cancelled
-                }
-            }
-        }
-
-        // Mouse Up
-        let upMonitor = NSEvent.addGlobalMonitorForEvents(matching: .otherMouseUp) { [weak self] event in
-            guard let self = self, event.buttonNumber == 2 else { return }
-            self.middleClickTask?.cancel()
-        }
-
-        middleClickMonitors = [downMonitor, upMonitor]
     }
 
     private func refreshShortcutMonitor() {
@@ -223,22 +174,22 @@ class RecordingShortcutManager: ObservableObject {
         shortcutMonitor.start(
             shortcuts: shortcuts,
             interruptibleActions: interruptibleRecordingActions,
-            onKeyDown: { [weak self] action, eventTime in
+            onShortcutDown: { [weak self] action, eventTime in
                 Task { @MainActor in
                     guard let self else { return }
                     guard let mode = self.recordingMode(for: action) else { return }
-                    await self.shortcutModeHandler.handleKeyDown(
+                    await self.shortcutModeHandler.handleShortcutDown(
                         action: action,
                         eventTime: eventTime,
                         mode: mode
                     )
                 }
             },
-            onKeyUp: { [weak self] action, eventTime in
+            onShortcutUp: { [weak self] action, eventTime in
                 Task { @MainActor in
                     guard let self else { return }
                     if let mode = self.recordingMode(for: action) {
-                        await self.shortcutModeHandler.handleKeyUp(
+                        await self.shortcutModeHandler.handleShortcutUp(
                             action: action,
                             eventTime: eventTime,
                             mode: mode
@@ -295,14 +246,6 @@ class RecordingShortcutManager: ObservableObject {
 
     private func removeAllMonitoring() {
         shortcutMonitor.stop()
-
-        for monitor in middleClickMonitors {
-            if let monitor = monitor {
-                NSEvent.removeMonitor(monitor)
-            }
-        }
-        middleClickMonitors = []
-        middleClickTask?.cancel()
 
         shortcutModeHandler.reset()
     }
@@ -382,7 +325,7 @@ final class RecordingShortcutModeHandler {
         activeShortcutCanCancelAccidentalStart = false
     }
 
-    func handleKeyDown(
+    func handleShortcutDown(
         action: ShortcutAction,
         eventTime: TimeInterval,
         mode: RecordingShortcutManager.Mode,
@@ -429,7 +372,7 @@ final class RecordingShortcutModeHandler {
         }
     }
 
-    func handleKeyUp(
+    func handleShortcutUp(
         action: ShortcutAction,
         eventTime: TimeInterval,
         mode: RecordingShortcutManager.Mode,
