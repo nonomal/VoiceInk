@@ -110,16 +110,19 @@ final class HistoryQuickAccessController: NSObject {
     }
 
     func dismiss(reason: String = "request") {
+        guard let panel else { return }
+
         Self.logger.info(
             "session=\(self.diagnosticsSessionID, privacy: .public) dismiss reason=\(reason, privacy: .public)"
         )
-        if let panel {
-            panel.persistPosition()
-        }
-        panel?.orderOut(nil)
-        panel?.close()
-        panel = nil
+        panel.persistPosition()
+        panel.onEscape = nil
+        panel.onKeyDown = nil
+        panel.onDismissRequest = nil
+        self.panel = nil
         viewModel = nil
+        panel.orderOut(nil)
+        panel.close()
     }
 
     private func handlePanelKeyDown(_ event: NSEvent) -> Bool {
@@ -140,19 +143,20 @@ final class HistoryQuickAccessController: NSObject {
                 "session=\(self.diagnosticsSessionID, privacy: .public) key action=select-previous from=\(selectedID, privacy: .public) to=\(self.shortID(self.viewModel?.selectedID), privacy: .public)"
             )
             return true
-        case 36, 76 where modifiers.contains(.command):
-            Self.logger.info(
-                "session=\(self.diagnosticsSessionID, privacy: .public) key action=open-details view=\(view, privacy: .public) selected=\(selectedID, privacy: .public) modifiers=\(modifiers.rawValue, privacy: .public)"
-            )
-            guard viewModel?.selectedTranscription != nil else { return true }
-            viewModel?.isShowingInfo = false
-            viewModel?.isShowingDetail = true
-            return true
         case 36, 76:
-            Self.logger.info(
-                "session=\(self.diagnosticsSessionID, privacy: .public) key action=paste view=\(view, privacy: .public) selected=\(selectedID, privacy: .public) modifiers=\(modifiers.rawValue, privacy: .public)"
-            )
-            pasteSelectedTranscription()
+            if modifiers.contains(.command) {
+                Self.logger.info(
+                    "session=\(self.diagnosticsSessionID, privacy: .public) key action=open-details view=\(view, privacy: .public) selected=\(selectedID, privacy: .public) modifiers=\(modifiers.rawValue, privacy: .public)"
+                )
+                guard viewModel?.selectedTranscription != nil else { return true }
+                viewModel?.isShowingInfo = false
+                viewModel?.isShowingDetail = true
+            } else {
+                Self.logger.info(
+                    "session=\(self.diagnosticsSessionID, privacy: .public) key action=paste view=\(view, privacy: .public) selected=\(selectedID, privacy: .public) modifiers=\(modifiers.rawValue, privacy: .public)"
+                )
+                pasteSelectedTranscription()
+            }
             return true
         default:
             return false
