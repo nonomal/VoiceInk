@@ -136,17 +136,24 @@ struct HistoryQuickAccessView: View {
     }
 
     private var historyView: some View {
-        VStack(spacing: 0) {
-            searchHeader
-
+        ZStack {
             if viewModel.filteredTranscriptions.isEmpty {
                 emptyState
             } else {
                 resultsList
             }
 
-            Divider()
-            keyboardHints
+            VStack(spacing: 0) {
+                QuickAccessScrollEdge(edge: .top) {
+                    searchHeader
+                }
+
+                Spacer(minLength: 0)
+
+                QuickAccessScrollEdge(edge: .bottom) {
+                    keyboardHints
+                }
+            }
         }
     }
 
@@ -191,6 +198,8 @@ struct HistoryQuickAccessView: View {
                     }
                 }
                 .padding(8)
+                .padding(.top, 58)
+                .padding(.bottom, 58)
             }
             .scrollIndicators(.never)
             .frame(maxWidth: .infinity)
@@ -206,28 +215,33 @@ struct HistoryQuickAccessView: View {
     @ViewBuilder
     private var detailView: some View {
         if let transcription = viewModel.selectedTranscription {
-            VStack(spacing: 0) {
-                detailHeader
-                Divider()
-
+            ZStack {
                 ScrollView {
                     detailContent(transcription)
                 }
                 .scrollIndicators(.never)
 
-                Divider()
-
-                HistoryDetailActionBar(
-                    transcription: transcription,
-                    audioURL: audioURL(for: transcription),
-                    isInfoPresented: viewModel.isShowingInfo,
-                    onToggleInfo: {
-                        viewModel.isShowingInfo.toggle()
-                    },
-                    onPaste: {
-                        onSelect(transcription)
+                VStack(spacing: 0) {
+                    QuickAccessScrollEdge(edge: .top) {
+                        detailHeader
                     }
-                )
+
+                    Spacer(minLength: 0)
+
+                    QuickAccessScrollEdge(edge: .bottom) {
+                        HistoryDetailActionBar(
+                            transcription: transcription,
+                            audioURL: audioURL(for: transcription),
+                            isInfoPresented: viewModel.isShowingInfo,
+                            onToggleInfo: {
+                                viewModel.isShowingInfo.toggle()
+                            },
+                            onPaste: {
+                                onSelect(transcription)
+                            }
+                        )
+                    }
+                }
             }
             .sidePanel(
                 isPresented: Binding(
@@ -259,6 +273,8 @@ struct HistoryQuickAccessView: View {
 
         }
         .padding(14)
+        .padding(.top, 54)
+        .padding(.bottom, 58)
     }
 
     private var detailHeader: some View {
@@ -396,8 +412,8 @@ struct HistoryQuickAccessView: View {
                 }
             }
         }
-        .padding(.horizontal, 12)
-        .frame(height: 48)
+        .padding(.horizontal, 10)
+        .frame(height: 44)
     }
 
     private func commandPill(
@@ -427,10 +443,72 @@ struct HistoryQuickAccessView: View {
             .frame(height: 32)
             .fixedSize(horizontal: true, vertical: false)
             .background(
-                AppMaterialCardBackground(cornerRadius: AppTheme.Radius.control)
+                QuickAccessButtonBackground()
             )
         }
         .buttonStyle(.plain)
+    }
+}
+
+private struct QuickAccessScrollEdge<Content: View>: View {
+    let edge: Edge
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        ZStack(alignment: edge == .top ? .top : .bottom) {
+            edgeMaterial
+                .allowsHitTesting(false)
+
+            content()
+                .padding(edge == .top ? .top : .bottom, 8)
+        }
+        .frame(height: edge == .top ? 72 : 64)
+    }
+
+    private var edgeMaterial: some View {
+        VisualEffectView(material: .hudWindow, blendingMode: .withinWindow)
+            .mask(edgeMask)
+    }
+
+    private var edgeMask: some View {
+        LinearGradient(
+            stops: edge == .top
+                ? [
+                    .init(color: .black, location: 0),
+                    .init(color: .black.opacity(0.92), location: 0.60),
+                    .init(color: .clear, location: 1),
+                ]
+                : [
+                    .init(color: .clear, location: 0),
+                    .init(color: .black.opacity(0.92), location: 0.40),
+                    .init(color: .black, location: 1),
+                ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+}
+
+private struct QuickAccessButtonBackground: View {
+    var isSelected = false
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous)
+            .fill(AppTheme.Surface.control)
+            .overlay {
+                if isSelected {
+                    RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous)
+                        .fill(AppTheme.Selection.fill)
+                }
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous)
+                    .strokeBorder(
+                        isSelected ? AppTheme.Selection.border : AppTheme.Border.card,
+                        lineWidth: isSelected ? 1.5 : 1
+                    )
+            }
     }
 }
 
@@ -481,8 +559,8 @@ private struct HistoryDetailActionBar: View {
             Spacer(minLength: 8)
             pasteButton
         }
-        .padding(.horizontal, 12)
-        .frame(height: 50)
+        .padding(.horizontal, 10)
+        .frame(height: 44)
     }
 
     private var modeButton: some View {
@@ -549,7 +627,7 @@ private struct HistoryDetailActionBar: View {
             .frame(minWidth: 112)
             .frame(height: 32)
             .fixedSize(horizontal: true, vertical: false)
-            .background(AppMaterialCardBackground(cornerRadius: AppTheme.Radius.control))
+            .background(QuickAccessButtonBackground())
         }
         .buttonStyle(.plain)
         .help("Paste enhanced text when available, otherwise paste the original transcription")
@@ -574,7 +652,7 @@ private struct HistoryDetailActionBar: View {
             }
             .foregroundStyle(AppTheme.Text.secondary)
             .frame(width: 34, height: 32)
-            .background(AppMaterialCardBackground(cornerRadius: AppTheme.Radius.control))
+            .background(QuickAccessButtonBackground())
         }
         .buttonStyle(.plain)
         .disabled(isWorking || audioURL == nil)
@@ -593,7 +671,7 @@ private struct HistoryDetailActionBar: View {
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(AppTheme.Text.secondary)
                 .frame(width: 34, height: 32)
-                .background(AppMaterialCardBackground(cornerRadius: AppTheme.Radius.control))
+                .background(QuickAccessButtonBackground())
         }
         .buttonStyle(.plain)
         .disabled(audioURL == nil)
@@ -606,12 +684,7 @@ private struct HistoryDetailActionBar: View {
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(AppTheme.Text.secondary)
                 .frame(width: 34, height: 32)
-                .background(
-                    AppMaterialCardBackground(
-                        isSelected: isInfoPresented,
-                        cornerRadius: AppTheme.Radius.control
-                    )
-                )
+                .background(QuickAccessButtonBackground(isSelected: isInfoPresented))
         }
         .buttonStyle(.plain)
         .help(isInfoPresented ? "Hide transcription info" : "Show transcription info")
@@ -633,7 +706,7 @@ private struct HistoryDetailActionBar: View {
         .frame(maxWidth: 140)
         .frame(height: 32)
         .clipped()
-        .background(AppMaterialCardBackground(cornerRadius: AppTheme.Radius.control))
+        .background(QuickAccessButtonBackground())
         .fixedSize(horizontal: true, vertical: false)
     }
 
