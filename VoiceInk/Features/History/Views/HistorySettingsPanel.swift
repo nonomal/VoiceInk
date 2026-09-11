@@ -24,6 +24,17 @@ struct HistorySettingsPanel: View {
 
             Form {
                 Section {
+                    LabeledContent("Open Quick Access") {
+                        ShortcutRecorder(action: .openHistoryWindow)
+                            .controlSize(.small)
+                    }
+                } header: {
+                    Text("Quick Access")
+                } footer: {
+                    Text("Search recent transcriptions from anywhere, then press Return to paste the selected result.")
+                }
+
+                Section {
                     Toggle("Auto-delete Transcript History", isOn: $isTranscriptionCleanupEnabled)
 
                     if isTranscriptionCleanupEnabled {

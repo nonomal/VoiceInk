@@ -9,7 +9,7 @@ final class DictionaryQuickAddManager {
     static let shared = DictionaryQuickAddManager()
     private init() {}
 
-    private var panel: DictionaryQuickAddPanel?
+    private var panel: PersistentQuickPanel?
     private var hostingController: NSHostingController<AnyView>?
     private var previousApp: NSRunningApplication?
 
@@ -25,12 +25,22 @@ final class DictionaryQuickAddManager {
         previousApp = NSWorkspace.shared.frontmostApplication
 
         let initialSize = NSSize(width: 500, height: DictionaryQuickAddView.Mode.vocabulary.panelHeight)
-        let newPanel = DictionaryQuickAddPanel(manager: self, size: initialSize)
+        let newPanel = PersistentQuickPanel(
+            size: initialSize,
+            positionDefaultsKey: "VoiceInkDictionaryQuickAddOrigin",
+            defaultVerticalOffset: 60
+        )
+        newPanel.onEscape = { [weak self] in
+            self?.hide()
+        }
+        newPanel.onDismissRequest = { [weak self] in
+            self?.hide(restorePreviousApplication: false)
+        }
 
         let view = DictionaryQuickAddView(
             onDismiss: { [weak self] in self?.hide() },
             onResize: { [weak self] height in
-                self?.panel?.resize(to: NSSize(width: 500, height: height))
+                self?.panel?.resizeKeepingTopEdge(to: NSSize(width: 500, height: height))
             }
         )
         .modelContainer(modelContainer)
@@ -42,78 +52,17 @@ final class DictionaryQuickAddManager {
         newPanel.makeKeyAndOrderFront(nil)
     }
 
-    func hide() {
+    func hide(restorePreviousApplication: Bool = true) {
         guard isVisible else { return }
+        panel?.persistPosition()
         panel?.orderOut(nil)
+        panel?.close()
         panel = nil
         hostingController = nil
-        previousApp?.activate()
+        if restorePreviousApplication {
+            previousApp?.activate()
+        }
         previousApp = nil
-    }
-}
-
-// MARK: - Panel
-
-class DictionaryQuickAddPanel: NSPanel {
-    override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { false }
-
-    private weak var manager: DictionaryQuickAddManager?
-
-    init(manager: DictionaryQuickAddManager, size: NSSize) {
-        self.manager = manager
-        let origin = DictionaryQuickAddPanel.centeredOrigin(for: size)
-        super.init(
-            contentRect: NSRect(origin: origin, size: size),
-            styleMask: [.nonactivatingPanel, .fullSizeContentView],
-            backing: .buffered,
-            defer: false
-        )
-        isFloatingPanel = true
-        level = .floating
-        hidesOnDeactivate = false
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        isMovable = true
-        isMovableByWindowBackground = true
-        backgroundColor = .clear
-        isOpaque = false
-        hasShadow = true
-        titlebarAppearsTransparent = true
-        titleVisibility = .hidden
-        standardWindowButton(.closeButton)?.isHidden = true
-    }
-
-    override func keyDown(with event: NSEvent) {
-        if event.keyCode == 53 {  // Escape
-            manager?.hide()
-        } else {
-            super.keyDown(with: event)
-        }
-    }
-
-    override func resignKey() {
-        super.resignKey()
-        DispatchQueue.main.async { [weak self] in
-            self?.manager?.hide()
-        }
-    }
-
-    func resize(to size: NSSize) {
-        let currentFrame = frame
-        let x = currentFrame.midX - size.width / 2
-        let y = currentFrame.maxY - size.height
-        NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.18
-            ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            animator().setFrame(NSRect(x: x, y: y, width: size.width, height: size.height), display: true)
-        }
-    }
-
-    private static func centeredOrigin(for size: NSSize) -> NSPoint {
-        let screen = NSScreen.main ?? NSScreen.screens[0]
-        let x = screen.visibleFrame.midX - size.width / 2
-        let y = screen.visibleFrame.midY - size.height / 2 + 60
-        return NSPoint(x: x, y: y)
     }
 }
 

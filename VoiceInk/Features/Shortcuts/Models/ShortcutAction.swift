@@ -68,7 +68,7 @@ enum ShortcutAction: Hashable {
         case .cancelRecorder:
             return String(localized: "Cancel Recording")
         case .openHistoryWindow:
-            return String(localized: "Open History Window")
+            return String(localized: "Open Quick Access")
         case .quickAddToDictionary:
             return String(localized: "Quick Add to Dictionary")
         case .mode(let id):

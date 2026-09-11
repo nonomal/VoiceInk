@@ -4,14 +4,18 @@ import SwiftUI
 /// Used in both the inline history side panel and the separate history window's metadata view.
 struct TranscriptionInfoPanel: View {
     let transcription: Transcription
+    var showsAIRequest = true
 
     var body: some View {
         Form {
             detailsSection
-            aiRequestSection
+            if showsAIRequest {
+                aiRequestSection
+            }
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
+        .scrollIndicators(.never)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
@@ -162,6 +166,17 @@ struct TranscriptionInfoPanel: View {
     }
 
     private func metadataRow(icon: String, label: LocalizedStringKey, value: String) -> some View {
+        TranscriptionMetadataRow(icon: icon, label: label, value: value)
+    }
+
+}
+
+struct TranscriptionMetadataRow: View {
+    let icon: String
+    let label: LocalizedStringKey
+    let value: String
+
+    var body: some View {
         HStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 11, weight: .medium))
@@ -171,6 +186,9 @@ struct TranscriptionInfoPanel: View {
             Text(label)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(.secondary)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .layoutPriority(1)
 
             Spacer(minLength: 0)
 
@@ -178,7 +196,8 @@ struct TranscriptionInfoPanel: View {
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundColor(.primary)
                 .lineLimit(1)
+                .truncationMode(.tail)
+                .multilineTextAlignment(.trailing)
         }
     }
-
 }

@@ -35,26 +35,20 @@ struct InlineHistoryView: View {
             sortBy: [SortDescriptor(\Transcription.timestamp, order: .reverse)]
         )
 
-        if let timestamp = timestamp {
-            if !searchText.isEmpty {
-                descriptor.predicate = #Predicate<Transcription> { transcription in
-                    (transcription.text.localizedStandardContains(searchText)
-                        || (transcription.enhancedText?.localizedStandardContains(searchText) ?? false))
-                        && transcription.timestamp < timestamp
-                }
-            } else {
-                descriptor.predicate = #Predicate<Transcription> { transcription in
-                    transcription.timestamp < timestamp
-                }
-            }
-        } else if !searchText.isEmpty {
+        if !searchText.isEmpty {
             descriptor.predicate = #Predicate<Transcription> { transcription in
                 transcription.text.localizedStandardContains(searchText)
                     || (transcription.enhancedText?.localizedStandardContains(searchText) ?? false)
             }
+        } else {
+            if let timestamp = timestamp {
+                descriptor.predicate = #Predicate<Transcription> { transcription in
+                    transcription.timestamp < timestamp
+                }
+            }
+            descriptor.fetchLimit = pageSize
         }
 
-        descriptor.fetchLimit = pageSize
         return descriptor
     }
 
@@ -349,7 +343,7 @@ struct InlineHistoryView: View {
             let items = try modelContext.fetch(cursorQueryDescriptor())
             displayedTranscriptions = items
             lastTimestamp = items.last?.timestamp
-            hasMoreContent = items.count == pageSize
+            hasMoreContent = searchText.isEmpty && items.count == pageSize
         } catch {
             print("Error loading transcriptions: \(error)")
         }
