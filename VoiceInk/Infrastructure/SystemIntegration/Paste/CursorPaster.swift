@@ -49,6 +49,12 @@ class CursorPaster {
         let shouldRestoreClipboard = UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste")
         let savedContents = shouldRestoreClipboard ? snapshotClipboard(from: pasteboard) : []
         let sessionID = UUID().uuidString
+        let shortSessionID = String(sessionID.prefix(8))
+        let pasteMethod = PasteMethod.current()
+
+        logger.info(
+            "session=\(shortSessionID, privacy: .public) paste start characters=\(text.count, privacy: .public) method=\(pasteMethod.rawValue, privacy: .public) restoreClipboard=\(shouldRestoreClipboard, privacy: .public)"
+        )
 
         guard
             ClipboardManager.setClipboard(
@@ -57,13 +63,19 @@ class CursorPaster {
                 sessionID: shouldRestoreClipboard ? sessionID : nil
             )
         else {
-            logger.error("Failed to prepare clipboard for paste")
+            logger.error(
+                "session=\(shortSessionID, privacy: .public) paste failed stage=prepare-clipboard"
+            )
             return .commandNotPosted
         }
 
         await wait(prePasteDelay)
 
         let pasteResult = await postPasteCommand()
+        let result = pasteResult.didPostPasteCommand ? "command-posted" : "command-not-posted"
+        logger.info(
+            "session=\(shortSessionID, privacy: .public) paste result=\(result, privacy: .public)"
+        )
         if shouldRestoreClipboard {
             scheduleClipboardRestore(
                 savedContents,

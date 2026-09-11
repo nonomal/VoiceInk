@@ -1,4 +1,5 @@
 import AppKit
+import OSLog
 
 @MainActor
 final class PersistentQuickPanel: NSPanel {
@@ -7,6 +8,7 @@ final class PersistentQuickPanel: NSPanel {
     var onDismissRequest: (() -> Void)?
 
     private let positionDefaultsKey: String
+    private let logger: Logger
 
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
@@ -14,9 +16,14 @@ final class PersistentQuickPanel: NSPanel {
     init(
         size: NSSize,
         positionDefaultsKey: String,
-        defaultVerticalOffset: CGFloat = 48
+        defaultVerticalOffset: CGFloat = 48,
+        diagnosticsCategory: String = "PersistentQuickPanel"
     ) {
         self.positionDefaultsKey = positionDefaultsKey
+        self.logger = Logger(
+            subsystem: "com.prakashjoshipax.voiceink",
+            category: diagnosticsCategory
+        )
 
         super.init(
             contentRect: NSRect(origin: .zero, size: size),
@@ -61,12 +68,26 @@ final class PersistentQuickPanel: NSPanel {
             return
         }
 
+        let shouldTraceEvent = [36, 53, 76, 125, 126].contains(event.keyCode)
+        if shouldTraceEvent {
+            let responder = firstResponder.map { String(describing: type(of: $0)) } ?? "none"
+            logger.info(
+                "Panel key event=\(self.keyName(for: event.keyCode), privacy: .public) code=\(event.keyCode, privacy: .public) modifiers=\(event.modifierFlags.rawValue, privacy: .public) keyWindow=\(self.isKeyWindow, privacy: .public) responder=\(responder, privacy: .public)"
+            )
+        }
+
         if event.keyCode == 53 {
+            logger.info("Panel route action=escape")
             performEscapeAction()
             return
         }
 
-        if onKeyDown?(event) == true {
+        let handled = onKeyDown?(event) == true
+        if shouldTraceEvent {
+            logger.info("Panel route handled=\(handled, privacy: .public)")
+        }
+
+        if handled {
             return
         }
 
@@ -95,8 +116,23 @@ final class PersistentQuickPanel: NSPanel {
 
         DispatchQueue.main.async { [weak self] in
             guard let self, !self.isKeyWindow else { return }
-            guard !self.isHostingFocusedAuxiliaryWindow else { return }
+            guard !self.isHostingFocusedAuxiliaryWindow else {
+                self.logger.info("Panel resign ignored reason=auxiliary-window")
+                return
+            }
+            self.logger.info("Panel resign action=dismiss")
             self.onDismissRequest?()
+        }
+    }
+
+    private func keyName(for keyCode: UInt16) -> String {
+        switch keyCode {
+        case 36: return "return"
+        case 53: return "escape"
+        case 76: return "keypad-enter"
+        case 125: return "down-arrow"
+        case 126: return "up-arrow"
+        default: return "other"
         }
     }
 

@@ -1,4 +1,5 @@
 import AppKit
+import OSLog
 import SwiftData
 import SwiftUI
 
@@ -36,6 +37,19 @@ final class HistoryQuickAccessViewModel: ObservableObject {
 
     func clearSearch() {
         searchText = ""
+    }
+
+    func transcriptionForPaste(preferredID: UUID? = nil) -> Transcription? {
+        if isSearching {
+            searchTask?.cancel()
+            load(query: searchText.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+
+        if let preferredID {
+            return filteredTranscriptions.first { $0.id == preferredID }
+        }
+
+        return selectedTranscription
     }
 
     private func scheduleSearch() {
@@ -99,7 +113,13 @@ final class HistoryQuickAccessViewModel: ObservableObject {
 }
 
 struct HistoryQuickAccessView: View {
+    private static let logger = Logger(
+        subsystem: "com.prakashjoshipax.voiceink",
+        category: "HistoryQuickAccess"
+    )
+
     @ObservedObject var viewModel: HistoryQuickAccessViewModel
+    let diagnosticsSessionID: String
     let onPaste: (Transcription) -> Void
 
     @FocusState private var isSearchFocused: Bool
@@ -123,11 +143,18 @@ struct HistoryQuickAccessView: View {
                 .strokeBorder(AppTheme.Border.control.opacity(0.55), lineWidth: 1)
         }
         .onAppear {
+            Self.logger.info(
+                "session=\(self.diagnosticsSessionID, privacy: .public) view appeared selected=\(self.shortID(viewModel.selectedID), privacy: .public)"
+            )
             DispatchQueue.main.async {
                 isSearchFocused = true
             }
         }
         .onChange(of: viewModel.isShowingDetail) { _, isShowingDetail in
+            let state = isShowingDetail ? "detail" : "list"
+            Self.logger.info(
+                "session=\(self.diagnosticsSessionID, privacy: .public) view state=\(state, privacy: .public) selected=\(self.shortID(viewModel.selectedID), privacy: .public)"
+            )
             isSearchFocused = !isShowingDetail
             if !isShowingDetail {
                 viewModel.isShowingInfo = false
@@ -191,6 +218,9 @@ struct HistoryQuickAccessView: View {
                                 viewModel.selectedID = transcription.id
                             },
                             onPaste: {
+                                Self.logger.info(
+                                    "session=\(self.diagnosticsSessionID, privacy: .public) ui action=row-double-click selected=\(self.shortID(transcription.id), privacy: .public)"
+                                )
                                 onPaste(transcription)
                             }
                         )
@@ -237,6 +267,9 @@ struct HistoryQuickAccessView: View {
                                 viewModel.isShowingInfo.toggle()
                             },
                             onPaste: {
+                                Self.logger.info(
+                                    "session=\(self.diagnosticsSessionID, privacy: .public) ui action=detail-paste-button selected=\(self.shortID(transcription.id), privacy: .public)"
+                                )
                                 onPaste(transcription)
                             }
                         )
@@ -397,6 +430,9 @@ struct HistoryQuickAccessView: View {
     private var keyboardHints: some View {
         HStack(spacing: 10) {
             commandPill("Details", systemImage: nil, shortcut: "⌘↵") {
+                Self.logger.info(
+                    "session=\(self.diagnosticsSessionID, privacy: .public) ui action=details-button selected=\(self.shortID(viewModel.selectedID), privacy: .public)"
+                )
                 if viewModel.selectedTranscription != nil {
                     withAnimation(.easeOut(duration: 0.16)) {
                         viewModel.isShowingDetail = true
@@ -407,6 +443,9 @@ struct HistoryQuickAccessView: View {
             Spacer()
 
             commandPill("Paste Text", systemImage: nil, shortcut: "↵") {
+                Self.logger.info(
+                    "session=\(self.diagnosticsSessionID, privacy: .public) ui action=list-paste-button selected=\(self.shortID(viewModel.selectedID), privacy: .public)"
+                )
                 if let transcription = viewModel.selectedTranscription {
                     onPaste(transcription)
                 }
@@ -414,6 +453,10 @@ struct HistoryQuickAccessView: View {
         }
         .padding(.horizontal, 10)
         .frame(height: 44)
+    }
+
+    private func shortID(_ id: UUID?) -> String {
+        id.map { String($0.uuidString.prefix(8)) } ?? "none"
     }
 
     private func commandPill(
