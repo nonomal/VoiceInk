@@ -268,7 +268,7 @@ struct HistoryQuickAccessView: View {
                         viewModel.isShowingInfo = false
                     }
 
-                    TranscriptionInfoPanel(transcription: transcription, showsAIRequest: false)
+                    TranscriptionInfoPanel(transcription: transcription)
                         .id(transcription.id)
                 }
             }
