@@ -100,7 +100,7 @@ final class HistoryQuickAccessViewModel: ObservableObject {
 
 struct HistoryQuickAccessView: View {
     @ObservedObject var viewModel: HistoryQuickAccessViewModel
-    let onSelect: (Transcription) -> Void
+    let onPaste: (Transcription) -> Void
 
     @FocusState private var isSearchFocused: Bool
 
@@ -191,7 +191,7 @@ struct HistoryQuickAccessView: View {
                                 viewModel.selectedID = transcription.id
                             },
                             onPaste: {
-                                onSelect(transcription)
+                                onPaste(transcription)
                             }
                         )
                         .id(transcription.id)
@@ -237,7 +237,7 @@ struct HistoryQuickAccessView: View {
                                 viewModel.isShowingInfo.toggle()
                             },
                             onPaste: {
-                                onSelect(transcription)
+                                onPaste(transcription)
                             }
                         )
                     }
@@ -408,7 +408,7 @@ struct HistoryQuickAccessView: View {
 
             commandPill("Paste Text", systemImage: nil, shortcut: "↵") {
                 if let transcription = viewModel.selectedTranscription {
-                    onSelect(transcription)
+                    onPaste(transcription)
                 }
             }
         }

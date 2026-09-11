@@ -3,6 +3,7 @@ import AppKit
 @MainActor
 final class PersistentQuickPanel: NSPanel {
     var onEscape: (() -> Void)?
+    var onKeyDown: ((NSEvent) -> Bool)?
     var onDismissRequest: (() -> Void)?
 
     private let positionDefaultsKey: String
@@ -54,12 +55,34 @@ final class PersistentQuickPanel: NSPanel {
         NotificationCenter.default.removeObserver(self)
     }
 
+    override func sendEvent(_ event: NSEvent) {
+        guard event.type == .keyDown else {
+            super.sendEvent(event)
+            return
+        }
+
+        if event.keyCode == 53 {
+            performEscapeAction()
+            return
+        }
+
+        if onKeyDown?(event) == true {
+            return
+        }
+
+        super.sendEvent(event)
+    }
+
     override func keyDown(with event: NSEvent) {
         guard event.keyCode == 53 else {
             super.keyDown(with: event)
             return
         }
 
+        performEscapeAction()
+    }
+
+    private func performEscapeAction() {
         if let onEscape {
             onEscape()
         } else {

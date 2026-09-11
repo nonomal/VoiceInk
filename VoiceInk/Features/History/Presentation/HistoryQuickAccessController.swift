@@ -7,12 +7,39 @@ final class HistoryQuickAccessController: NSObject {
     static let shared = HistoryQuickAccessController()
 
     private var panel: PersistentQuickPanel?
-    private var keyEventMonitor: Any?
     private var viewModel: HistoryQuickAccessViewModel?
     private var targetApplication: NSRunningApplication?
+    private var lastExternalApplication: NSRunningApplication?
+    private var activationObserver: NSObjectProtocol?
 
     private override init() {
         super.init()
+
+        rememberExternalApplication(NSWorkspace.shared.frontmostApplication)
+        activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard
+                let application = notification.userInfo?[NSWorkspace.applicationUserInfoKey]
+                    as? NSRunningApplication
+            else {
+                return
+            }
+
+            Task { @MainActor in
+                self?.rememberExternalApplication(application)
+            }
+        }
+    }
+
+    deinit {
+        MainActor.assumeIsolated {
+            if let activationObserver {
+                NSWorkspace.shared.notificationCenter.removeObserver(activationObserver)
+            }
+        }
     }
 
     func show(modelContext: ModelContext, engine: VoiceInkEngine) {
@@ -22,12 +49,12 @@ final class HistoryQuickAccessController: NSObject {
             return
         }
 
-        targetApplication = NSWorkspace.shared.frontmostApplication
+        targetApplication = resolvedTargetApplication()
 
         let viewModel = HistoryQuickAccessViewModel(modelContext: modelContext)
         let rootView = HistoryQuickAccessView(
                 viewModel: viewModel,
-                onSelect: { [weak self] transcription in
+                onPaste: { [weak self] transcription in
                     self?.paste(transcription)
                 }
             )
@@ -43,6 +70,9 @@ final class HistoryQuickAccessController: NSObject {
         panel.onEscape = { [weak self] in
             self?.handleEscape()
         }
+        panel.onKeyDown = { [weak self] event in
+            self?.handlePanelKeyDown(event) ?? false
+        }
         panel.onDismissRequest = { [weak self] in
             self?.dismiss()
         }
@@ -51,12 +81,10 @@ final class HistoryQuickAccessController: NSObject {
 
         self.panel = panel
         self.viewModel = viewModel
-        installKeyEventMonitor()
         panel.makeKeyAndOrderFront(nil)
     }
 
     func dismiss() {
-        removeKeyEventMonitor()
         if let panel {
             panel.persistPosition()
         }
@@ -66,48 +94,33 @@ final class HistoryQuickAccessController: NSObject {
         viewModel = nil
     }
 
-    private func installKeyEventMonitor() {
-        removeKeyEventMonitor()
-        keyEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self, self.panel?.isKeyWindow == true else { return event }
+    private func handlePanelKeyDown(_ event: NSEvent) -> Bool {
+        let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
 
-            switch event.keyCode {
-            case 53:
-                self.handleEscape()
-                return nil
-            case 125:
-                self.viewModel?.moveSelection(by: 1)
-                return nil
-            case 126:
-                self.viewModel?.moveSelection(by: -1)
-                return nil
-            case 36, 76 where event.modifierFlags.contains(.command):
-                if self.viewModel?.selectedTranscription != nil {
-                    self.viewModel?.isShowingInfo = false
-                    self.viewModel?.isShowingDetail = true
-                }
-                return nil
-            case 36, 76:
-                if let transcription = self.viewModel?.selectedTranscription {
-                    self.paste(transcription)
-                }
-                return nil
-            default:
-                return event
-            }
-        }
-    }
-
-    private func removeKeyEventMonitor() {
-        if let keyEventMonitor {
-            NSEvent.removeMonitor(keyEventMonitor)
-            self.keyEventMonitor = nil
+        switch event.keyCode {
+        case 125 where viewModel?.isShowingDetail == false:
+            viewModel?.moveSelection(by: 1)
+            return true
+        case 126 where viewModel?.isShowingDetail == false:
+            viewModel?.moveSelection(by: -1)
+            return true
+        case 36, 76 where modifiers.contains(.command):
+            guard viewModel?.selectedTranscription != nil else { return true }
+            viewModel?.isShowingInfo = false
+            viewModel?.isShowingDetail = true
+            return true
+        case 36, 76:
+            guard let transcription = viewModel?.selectedTranscription else { return true }
+            paste(transcription)
+            return true
+        default:
+            return false
         }
     }
 
     private func paste(_ transcription: Transcription) {
         let text = transcription.preferredHistoryText
-        let targetApplication = targetApplication
+        let targetApplication = resolvedTargetApplication() ?? targetApplication
         self.targetApplication = nil
         dismiss()
 
@@ -115,6 +128,30 @@ final class HistoryQuickAccessController: NSObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
             CursorPaster.pasteAtCursor(text)
         }
+    }
+
+    private func resolvedTargetApplication() -> NSRunningApplication? {
+        if let frontmostApplication = NSWorkspace.shared.frontmostApplication,
+            isExternalApplication(frontmostApplication)
+        {
+            rememberExternalApplication(frontmostApplication)
+            return frontmostApplication
+        }
+
+        if let lastExternalApplication, !lastExternalApplication.isTerminated {
+            return lastExternalApplication
+        }
+
+        return nil
+    }
+
+    private func rememberExternalApplication(_ application: NSRunningApplication?) {
+        guard let application, isExternalApplication(application), !application.isTerminated else { return }
+        lastExternalApplication = application
+    }
+
+    private func isExternalApplication(_ application: NSRunningApplication) -> Bool {
+        application.processIdentifier != ProcessInfo.processInfo.processIdentifier
     }
 
     private func handleEscape() {
