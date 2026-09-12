@@ -63,52 +63,26 @@ struct WordReplacementView: View {
         UserDefaults.standard.set(sortMode.rawValue, forKey: "wordReplacementSortMode")
     }
 
-    private var shouldShowAddButton: Bool {
-        !originalWord.isEmpty || !replacementWord.isEmpty
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                TextField("", text: $originalWord, prompt: Text("Original text (use commas for multiple)"))
-                    .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 13))
-                    .labelsHidden()
-
-                Image(systemName: "arrow.right")
-                    .foregroundColor(.secondary)
-                    .font(.system(size: 10))
-                    .frame(width: 10)
-
-                TextField("", text: $replacementWord, prompt: Text("Replacement text"))
-                    .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 13))
-                    .onSubmit { addReplacement() }
-                    .labelsHidden()
-
-                if shouldShowAddButton {
-                    AddIconButton(
-                        helpText: "Add word replacement",
-                        isDisabled: originalWord.isEmpty || replacementWord.isEmpty,
-                        action: addReplacement
-                    )
-                }
-
-                Button {
-                    showInfoPopover.toggle()
-                } label: {
-                    Image(systemName: "info.circle")
-                }
-                .buttonStyle(.borderless)
-                .help("Word replacement examples")
-                .popover(isPresented: $showInfoPopover) {
-                    WordReplacementInfoPopover()
-                }
-            }
-            .animation(.easeInOut(duration: 0.2), value: shouldShowAddButton)
-
             if !wordReplacements.isEmpty {
                 VStack(spacing: 0) {
+                    HStack {
+                        Text(String(localized: "Word Replacements (\(wordReplacements.count))"))
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(AppTheme.Text.secondary)
+
+                        Spacer()
+
+                        DictionaryEdgeActionButton(
+                            title: isAscending ? "ASC" : "DESC",
+                            systemImage: isAscending ? "chevron.up" : "chevron.down",
+                            help: "Reverse sort order",
+                            action: toggleSortDirection
+                        )
+                    }
+                    .padding(.bottom, 4)
+
                     HStack(spacing: 8) {
                         Button(action: { toggleSort(for: .original) }) {
                             HStack(spacing: 4) {
@@ -116,11 +90,6 @@ struct WordReplacementView: View {
                                     .font(.system(size: 12, weight: .medium))
                                     .foregroundColor(.secondary)
 
-                                if sortMode == .originalAsc || sortMode == .originalDesc {
-                                    Image(systemName: sortMode == .originalAsc ? "chevron.up" : "chevron.down")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -138,11 +107,6 @@ struct WordReplacementView: View {
                                     .font(.system(size: 12, weight: .medium))
                                     .foregroundColor(.secondary)
 
-                                if sortMode == .replacementAsc || sortMode == .replacementDesc {
-                                    Image(systemName: sortMode == .replacementAsc ? "chevron.up" : "chevron.down")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -171,6 +135,49 @@ struct WordReplacementView: View {
                 }
                 .padding(.top, 4)
             }
+
+            HStack(spacing: 8) {
+                TextField("", text: $originalWord, prompt: Text("Original text (use commas for multiple)"))
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 13))
+                    .labelsHidden()
+
+                Image(systemName: "arrow.right")
+                    .foregroundColor(.secondary)
+                    .font(.system(size: 10))
+                    .frame(width: 10)
+
+                TextField("", text: $replacementWord, prompt: Text("Replacement text"))
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 13))
+                    .onSubmit { addReplacement() }
+                    .labelsHidden()
+            }
+
+            HStack {
+                DictionaryEdgeActionButton(
+                    title: "Examples",
+                    systemImage: "info.circle",
+                    help: "Word replacement examples"
+                ) {
+                    showInfoPopover.toggle()
+                }
+                .popover(isPresented: $showInfoPopover) {
+                    WordReplacementInfoPopover()
+                }
+
+                Spacer()
+
+                DictionaryEdgeActionButton(
+                    title: "Add",
+                    systemImage: "plus",
+                    shortcut: "↵",
+                    help: "Add word replacement",
+                    isDisabled: originalWord.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        || replacementWord.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                    action: addReplacement
+                )
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .sheet(isPresented: isEditingReplacement) {
@@ -197,6 +204,20 @@ struct WordReplacementView: View {
         }
         originalWord = ""
         replacementWord = ""
+    }
+
+    private var isAscending: Bool {
+        sortMode == .originalAsc || sortMode == .replacementAsc
+    }
+
+    private func toggleSortDirection() {
+        switch sortMode {
+        case .originalAsc: sortMode = .originalDesc
+        case .originalDesc: sortMode = .originalAsc
+        case .replacementAsc: sortMode = .replacementDesc
+        case .replacementDesc: sortMode = .replacementAsc
+        }
+        UserDefaults.standard.set(sortMode.rawValue, forKey: "wordReplacementSortMode")
     }
 
     private func removeReplacement(_ replacement: WordReplacement) {

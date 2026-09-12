@@ -1,14 +1,14 @@
 import SwiftData
 import SwiftUI
 
-struct InlineHistoryView: View {
+struct HistoryView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var searchText = ""
     @State private var expandedId: UUID?
     @State private var selectedTranscriptions: Set<Transcription> = []
     @State private var showDeleteConfirmation = false
     @State private var isPanelPresented = false
-    @State private var panelMode: InlineHistoryPanelMode = .info
+    @State private var panelMode: HistoryPanelMode = .info
     @State private var panelTranscriptionId: UUID?
     @State private var displayedTranscriptions: [Transcription] = []
     @State private var isLoading = false
@@ -36,9 +36,18 @@ struct InlineHistoryView: View {
         )
 
         if !searchText.isEmpty {
-            descriptor.predicate = #Predicate<Transcription> { transcription in
-                transcription.text.localizedStandardContains(searchText)
-                    || (transcription.enhancedText?.localizedStandardContains(searchText) ?? false)
+            let query = searchText
+            if let timestamp {
+                descriptor.predicate = #Predicate<Transcription> { transcription in
+                    (transcription.text.localizedStandardContains(query)
+                        || (transcription.enhancedText?.localizedStandardContains(query) ?? false))
+                        && transcription.timestamp < timestamp
+                }
+            } else {
+                descriptor.predicate = #Predicate<Transcription> { transcription in
+                    transcription.text.localizedStandardContains(query)
+                        || (transcription.enhancedText?.localizedStandardContains(query) ?? false)
+                }
             }
         } else {
             if let timestamp = timestamp {
@@ -46,8 +55,12 @@ struct InlineHistoryView: View {
                     transcription.timestamp < timestamp
                 }
             }
-            descriptor.fetchLimit = pageSize
         }
+
+        // Searches use the same cursor pagination as the unfiltered history.
+        // Without this limit, every keystroke materializes all matching rows and
+        // the timestamp cursor can never advance.
+        descriptor.fetchLimit = pageSize
 
         return descriptor
     }
@@ -61,7 +74,7 @@ struct InlineHistoryView: View {
         return displayedTranscriptions.first { $0.id == id }
     }
 
-    private func openPanel(mode: InlineHistoryPanelMode, transcriptionID: UUID? = nil) {
+    private func openPanel(mode: HistoryPanelMode, transcriptionID: UUID? = nil) {
         panelMode = mode
         panelTranscriptionId = transcriptionID
 
@@ -343,7 +356,7 @@ struct InlineHistoryView: View {
             let items = try modelContext.fetch(cursorQueryDescriptor())
             displayedTranscriptions = items
             lastTimestamp = items.last?.timestamp
-            hasMoreContent = searchText.isEmpty && items.count == pageSize
+            hasMoreContent = items.count == pageSize
         } catch {
             print("Error loading transcriptions: \(error)")
         }
@@ -456,7 +469,7 @@ struct InlineHistoryView: View {
     }
 }
 
-private enum InlineHistoryPanelMode {
+private enum HistoryPanelMode {
     case info
     case analysis
     case historySettings

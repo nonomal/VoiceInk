@@ -24,14 +24,16 @@ struct HistorySettingsPanel: View {
 
             Form {
                 Section {
-                    LabeledContent("Open Quick Access") {
-                        ShortcutRecorder(action: .openHistoryWindow)
+                    LabeledContent("Open Quick History") {
+                        ShortcutRecorder(action: .openQuickHistory)
                             .controlSize(.small)
                     }
                 } header: {
-                    Text("Quick Access")
-                } footer: {
-                    Text("Search recent transcriptions from anywhere, then press Return to paste the selected result.")
+                    sectionHeader(
+                        "Quick History",
+                        tip:
+                            "Open recent transcriptions without opening the main VoiceInk window. Search, select, and press Return to paste into your current app."
+                    )
                 }
 
                 Section {

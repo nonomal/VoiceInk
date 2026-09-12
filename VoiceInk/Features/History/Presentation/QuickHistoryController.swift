@@ -3,11 +3,11 @@ import SwiftData
 import SwiftUI
 
 @MainActor
-final class HistoryQuickAccessController: NSObject {
-    static let shared = HistoryQuickAccessController()
+final class QuickHistoryController: NSObject {
+    static let shared = QuickHistoryController()
 
     private var panel: PersistentQuickPanel?
-    private var viewModel: HistoryQuickAccessViewModel?
+    private var viewModel: QuickHistoryViewModel?
     private var targetApplication: NSRunningApplication?
     private var lastExternalApplication: NSRunningApplication?
     private var activationObserver: NSObjectProtocol?
@@ -51,16 +51,25 @@ final class HistoryQuickAccessController: NSObject {
 
         targetApplication = resolvedTargetApplication()
 
-        let viewModel = HistoryQuickAccessViewModel(modelContext: modelContext)
-        let rootView = HistoryQuickAccessView(
+        guard let enhancementService = engine.enhancementService else {
+            // Quick History's detail actions require the enhancement service.
+            // Do not crash if an engine is intentionally configured without it.
+            return
+        }
+
+        let viewModel = QuickHistoryViewModel(modelContext: modelContext)
+        let rootView = QuickHistoryView(
                 viewModel: viewModel,
                 onPaste: { [weak self] transcription in
                     self?.paste(transcription)
+                },
+                onDismiss: { [weak self] in
+                    self?.dismiss()
                 }
             )
             .modelContainer(modelContext.container)
             .environmentObject(engine)
-            .environmentObject(engine.enhancementService!)
+            .environmentObject(enhancementService)
 
         let hostingController = NSHostingController(rootView: rootView)
         let panel = PersistentQuickPanel(

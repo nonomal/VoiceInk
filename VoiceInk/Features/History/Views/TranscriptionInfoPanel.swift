@@ -1,17 +1,13 @@
 import SwiftUI
 
-/// Reusable component that displays transcription Details and AI Request sections.
-/// Used in both the inline history side panel and the separate history window's metadata view.
+/// Reusable component that displays transcription details and the recorded AI request.
 struct TranscriptionInfoPanel: View {
     let transcription: Transcription
-    var showsAIRequest = true
 
     var body: some View {
         Form {
             detailsSection
-            if showsAIRequest {
-                aiRequestSection
-            }
+            aiRequestSection
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)

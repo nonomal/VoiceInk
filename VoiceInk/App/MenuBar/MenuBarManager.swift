@@ -80,12 +80,12 @@ class MenuBarManager: ObservableObject {
         }
     }
 
-    func openHistoryQuickAccess() {
+    func openQuickHistory() {
         guard let engine else { return }
 
         // Let the MenuBarExtra close before making the nonactivating panel key.
         DispatchQueue.main.async {
-            HistoryQuickAccessController.shared.show(modelContext: engine.modelContext, engine: engine)
+            QuickHistoryController.shared.show(modelContext: engine.modelContext, engine: engine)
         }
     }
 }
