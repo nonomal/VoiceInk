@@ -2406,22 +2406,6 @@
         }
       }
     },
-    "Add Now" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jetzt hinzufügen"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "立即添加"
-          }
-        }
-      }
-    },
     "Add New" : {
       "localizations" : {
         "de" : {
@@ -2466,6 +2450,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "添加新提示词"
+          }
+        }
+      }
+    },
+    "Add Now" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jetzt hinzufügen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "立即添加"
           }
         }
       }

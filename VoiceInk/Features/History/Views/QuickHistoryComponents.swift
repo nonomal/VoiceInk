@@ -35,8 +35,8 @@ struct QuickHistoryDetailActionBar: View {
 
     private var selectedPromptTitle: String {
         selectedPromptOverride?.title
-            ?? enhancementConfiguration?.prompt?.title
             ?? transcription.promptName
+            ?? enhancementConfiguration?.prompt?.title
             ?? String(localized: "Select Prompt")
     }
 
@@ -52,6 +52,9 @@ struct QuickHistoryDetailActionBar: View {
         }
         .padding(.horizontal, 10)
         .frame(height: 44)
+        .onChange(of: transcription.id) { _, _ in
+            selectedPromptOverride = nil
+        }
     }
 
     private var modeButton: some View {
@@ -310,6 +313,7 @@ struct QuickHistoryDetailActionBar: View {
 
     private func enhance(using prompt: CustomPrompt) {
         guard let baseConfiguration = enhancementConfiguration else {
+            selectedPromptOverride = nil
             showError(String(localized: "AI Enhancement is not enabled or configured"))
             return
         }
@@ -335,6 +339,7 @@ struct QuickHistoryDetailActionBar: View {
                         try modelContext.save()
                     } catch {
                         modelContext.rollback()
+                        selectedPromptOverride = nil
                         isWorking = false
                         showError(
                             error.localizedDescription.isEmpty
@@ -343,6 +348,7 @@ struct QuickHistoryDetailActionBar: View {
                         )
                         return
                     }
+                    selectedPromptOverride = nil
                     isWorking = false
                     NotificationManager.shared.showNotification(
                         title: String(localized: "Re-enhancement successful"),
@@ -352,6 +358,7 @@ struct QuickHistoryDetailActionBar: View {
                 }
             } catch {
                 await MainActor.run {
+                    selectedPromptOverride = nil
                     isWorking = false
                     let description = EnhancementFailureFormatter.description(for: error)
                     showError(

@@ -88,8 +88,13 @@ struct WordReplacementView: View {
                             HStack(spacing: 4) {
                                 Text("Original")
                                     .font(.system(size: 12, weight: .medium))
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(isSortingOriginal ? AppTheme.Text.primary : AppTheme.Text.secondary)
 
+                                if isSortingOriginal {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 9, weight: .semibold))
+                                        .foregroundStyle(AppTheme.Text.secondary)
+                                }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -105,8 +110,13 @@ struct WordReplacementView: View {
                             HStack(spacing: 4) {
                                 Text("Replacement")
                                     .font(.system(size: 12, weight: .medium))
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(isSortingOriginal ? AppTheme.Text.secondary : AppTheme.Text.primary)
 
+                                if !isSortingOriginal {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 9, weight: .semibold))
+                                        .foregroundStyle(AppTheme.Text.secondary)
+                                }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -140,6 +150,7 @@ struct WordReplacementView: View {
                 TextField("", text: $originalWord, prompt: Text("Original text (use commas for multiple)"))
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 13))
+                    .onSubmit { addReplacement() }
                     .labelsHidden()
 
                 Image(systemName: "arrow.right")
@@ -208,6 +219,10 @@ struct WordReplacementView: View {
 
     private var isAscending: Bool {
         sortMode == .originalAsc || sortMode == .replacementAsc
+    }
+
+    private var isSortingOriginal: Bool {
+        sortMode == .originalAsc || sortMode == .originalDesc
     }
 
     private func toggleSortDirection() {

@@ -1,7 +1,12 @@
 import SwiftUI
 
+enum QuickPanelEdge {
+    case top
+    case bottom
+}
+
 struct QuickPanelScrollEdge<Content: View>: View {
-    let edge: Edge
+    let edge: QuickPanelEdge
     @ViewBuilder let content: () -> Content
 
     var body: some View {

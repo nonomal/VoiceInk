@@ -2,6 +2,11 @@ import SwiftData
 import SwiftUI
 
 struct HistoryView: View {
+    private struct PaginationCursor {
+        let timestamp: Date
+        let id: UUID
+    }
+
     @Environment(\.modelContext) private var modelContext
     @State private var searchText = ""
     @State private var expandedId: UUID?
@@ -13,7 +18,7 @@ struct HistoryView: View {
     @State private var displayedTranscriptions: [Transcription] = []
     @State private var isLoading = false
     @State private var hasMoreContent = true
-    @State private var lastTimestamp: Date?
+    @State private var paginationCursor: PaginationCursor?
     @State private var isViewCurrentlyVisible = false
 
     private let exportService = VoiceInkCSVExportService()
@@ -30,18 +35,24 @@ struct HistoryView: View {
         return descriptor
     }
 
-    private func cursorQueryDescriptor(after timestamp: Date? = nil) -> FetchDescriptor<Transcription> {
+    private func cursorQueryDescriptor(after cursor: PaginationCursor? = nil) -> FetchDescriptor<Transcription> {
         var descriptor = FetchDescriptor<Transcription>(
-            sortBy: [SortDescriptor(\Transcription.timestamp, order: .reverse)]
+            sortBy: [
+                SortDescriptor(\Transcription.timestamp, order: .reverse),
+                SortDescriptor(\Transcription.id, order: .reverse),
+            ]
         )
 
         if !searchText.isEmpty {
             let query = searchText
-            if let timestamp {
+            if let cursor {
+                let cursorTimestamp = cursor.timestamp
+                let cursorID = cursor.id
                 descriptor.predicate = #Predicate<Transcription> { transcription in
                     (transcription.text.localizedStandardContains(query)
                         || (transcription.enhancedText?.localizedStandardContains(query) ?? false))
-                        && transcription.timestamp < timestamp
+                        && (transcription.timestamp < cursorTimestamp
+                            || (transcription.timestamp == cursorTimestamp && transcription.id < cursorID))
                 }
             } else {
                 descriptor.predicate = #Predicate<Transcription> { transcription in
@@ -50,17 +61,18 @@ struct HistoryView: View {
                 }
             }
         } else {
-            if let timestamp = timestamp {
+            if let cursor {
+                let cursorTimestamp = cursor.timestamp
+                let cursorID = cursor.id
                 descriptor.predicate = #Predicate<Transcription> { transcription in
-                    transcription.timestamp < timestamp
+                    transcription.timestamp < cursorTimestamp
+                        || (transcription.timestamp == cursorTimestamp && transcription.id < cursorID)
                 }
             }
         }
 
-        // Searches use the same cursor pagination as the unfiltered history.
-        // Without this limit, every keystroke materializes all matching rows and
-        // the timestamp cursor can never advance.
-        descriptor.fetchLimit = pageSize
+        // Fetch one extra row so the UI can determine whether another page exists.
+        descriptor.fetchLimit = pageSize + 1
 
         return descriptor
     }
@@ -352,11 +364,12 @@ struct HistoryView: View {
         defer { isLoading = false }
 
         do {
-            lastTimestamp = nil
+            paginationCursor = nil
             let items = try modelContext.fetch(cursorQueryDescriptor())
-            displayedTranscriptions = items
-            lastTimestamp = items.last?.timestamp
-            hasMoreContent = items.count == pageSize
+            let page = Array(items.prefix(pageSize))
+            displayedTranscriptions = page
+            paginationCursor = page.last.map { PaginationCursor(timestamp: $0.timestamp, id: $0.id) }
+            hasMoreContent = items.count > pageSize
         } catch {
             print("Error loading transcriptions: \(error)")
         }
@@ -364,16 +377,17 @@ struct HistoryView: View {
 
     @MainActor
     private func loadMoreContent() async {
-        guard !isLoading, hasMoreContent, let lastTimestamp = lastTimestamp else { return }
+        guard !isLoading, hasMoreContent, let paginationCursor else { return }
 
         isLoading = true
         defer { isLoading = false }
 
         do {
-            let newItems = try modelContext.fetch(cursorQueryDescriptor(after: lastTimestamp))
-            displayedTranscriptions.append(contentsOf: newItems)
-            self.lastTimestamp = newItems.last?.timestamp
-            hasMoreContent = newItems.count == pageSize
+            let items = try modelContext.fetch(cursorQueryDescriptor(after: paginationCursor))
+            let page = Array(items.prefix(pageSize))
+            displayedTranscriptions.append(contentsOf: page)
+            self.paginationCursor = page.last.map { PaginationCursor(timestamp: $0.timestamp, id: $0.id) }
+            hasMoreContent = items.count > pageSize
         } catch {
             print("Error loading more transcriptions: \(error)")
         }
@@ -382,7 +396,7 @@ struct HistoryView: View {
     @MainActor
     private func resetPagination() {
         displayedTranscriptions = []
-        lastTimestamp = nil
+        paginationCursor = nil
         hasMoreContent = true
         isLoading = false
     }

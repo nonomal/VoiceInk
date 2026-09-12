@@ -45,7 +45,10 @@ final class QuickHistoryViewModel: ObservableObject {
     func transcriptionForPaste(preferredID: UUID? = nil) -> Transcription? {
         if isSearching {
             searchTask?.cancel()
-            load(query: searchText.trimmingCharacters(in: .whitespacesAndNewlines))
+            load(
+                query: searchText.trimmingCharacters(in: .whitespacesAndNewlines),
+                selecting: preferredID ?? selectedID
+            )
         }
 
         if let preferredID {
